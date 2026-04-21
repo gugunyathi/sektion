@@ -1,16 +1,22 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import { BottomNav, Tab } from "@/components/BottomNav";
+import { FeedScreen } from "@/components/screens/FeedScreen";
+import { DiscoverScreen } from "@/components/screens/DiscoverScreen";
+import { TableShareScreen } from "@/components/screens/TableShareScreen";
+import { ProfileScreen } from "@/components/screens/ProfileScreen";
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
+const Index = () => {
+  const [tab, setTab] = useState<Tab>("feed");
+
   return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
-    </div>
+    <main className="bg-background relative mx-auto min-h-[100dvh] w-full max-w-md overflow-hidden">
+      {tab === "feed" && <FeedScreen />}
+      {tab === "discover" && <DiscoverScreen />}
+      {tab === "tableshare" && <TableShareScreen />}
+      {tab === "profile" && <ProfileScreen />}
+      <BottomNav active={tab} onChange={setTab} />
+    </main>
   );
 };
-
-const Index = PlaceholderIndex;
 
 export default Index;
