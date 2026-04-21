@@ -3,7 +3,7 @@ import { Event } from "@/data/events";
 import { getTablesForEvent, Table } from "@/data/tables";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { VibeTag } from "./VibeTag";
-import { useBooking } from "@/context/BookingContext";
+import { useBooking, useCountdown } from "@/context/BookingContext";
 import {
   ArrowLeft,
   BadgeCheck,
@@ -501,7 +501,6 @@ const Row = ({ label, value, bold }: { label: string; value: string; bold?: bool
 const Divider = () => <div className="bg-border/60 h-px w-full" />;
 
 const CountdownCard = ({ expiresAt }: { expiresAt: number }) => {
-  const { useCountdown } = require("@/context/BookingContext") as typeof import("@/context/BookingContext");
   const { label, percent, expired } = useCountdown(expiresAt);
   return (
     <div
