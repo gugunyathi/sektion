@@ -3,10 +3,13 @@ import { VibeTag } from "./VibeTag";
 import { Bookmark, Heart, MapPin, MessageCircle, Send, Users, Zap } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useInventory } from "@/context/InventoryContext";
 
 export const EventCard = ({ event, onOpen }: { event: Event; onOpen: (e: Event) => void }) => {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
+  const { seatsLeftForEvent } = useInventory();
+  const seatsLeft = seatsLeftForEvent(event.id);
 
   return (
     <article className="snap-item relative h-[100dvh] w-full overflow-hidden">
@@ -113,7 +116,9 @@ export const EventCard = ({ event, onOpen }: { event: Event; onOpen: (e: Event) 
           </div>
           <div className="flex items-center gap-1.5 text-xs text-foreground/80">
             <Users className="h-3.5 w-3.5" />
-            <span className="font-semibold text-secondary">{event.seatsLeft}</span>
+            <span className={cn("font-semibold", seatsLeft === 0 ? "text-destructive" : "text-secondary")}>
+              {seatsLeft}
+            </span>
             <span>of {event.totalSeats} seats left</span>
           </div>
         </div>
