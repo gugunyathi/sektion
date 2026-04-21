@@ -358,7 +358,8 @@ const TablesStep = ({
       );
     })}
   </div>
-);
+  );
+};
 
 /* ---------- Step 3: Review ---------- */
 const ReviewStep = ({
