@@ -4,6 +4,7 @@ import { getTablesForEvent, Table } from "@/data/tables";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { VibeTag } from "./VibeTag";
 import { useBooking, useCountdown } from "@/context/BookingContext";
+import { useInventory } from "@/context/InventoryContext";
 import {
   ArrowLeft,
   BadgeCheck,
@@ -207,62 +208,74 @@ const GuestsStep = ({
   event: Event;
   guests: number;
   setGuests: (n: number) => void;
-}) => (
-  <div className="space-y-6 animate-float-up">
-    <div>
-      <h2 className="font-display text-2xl font-black leading-tight">How many of you?</h2>
-      <p className="text-muted-foreground mt-1 text-sm">
-        You'll be seated with curated sharers — pick how many seats to claim.
-      </p>
-    </div>
-    <div className="bg-muted/50 rounded-3xl p-6">
-      <div className="flex items-center justify-between">
-        <button
-          onClick={() => setGuests(Math.max(1, guests - 1))}
-          className="border-border flex h-12 w-12 items-center justify-center rounded-full border"
-          aria-label="Decrease guests"
-        >
-          <Minus className="h-5 w-5" />
-        </button>
-        <div className="text-center">
-          <div className="font-display text-6xl font-black">{guests}</div>
-          <div className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
-            {guests === 1 ? "guest" : "guests"}
-          </div>
-        </div>
-        <button
-          onClick={() => setGuests(Math.min(event.seatsLeft, guests + 1))}
-          className="border-border flex h-12 w-12 items-center justify-center rounded-full border"
-          aria-label="Increase guests"
-        >
-          <Plus className="h-5 w-5" />
-        </button>
+}) => {
+  const { seatsLeftForEvent } = useInventory();
+  const seatsLeft = seatsLeftForEvent(event.id);
+  return (
+    <div className="space-y-6 animate-float-up">
+      <div>
+        <h2 className="font-display text-2xl font-black leading-tight">How many of you?</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          You'll be seated with curated sharers — pick how many seats to claim.
+        </p>
       </div>
-      <p className="text-muted-foreground mt-4 text-center text-xs">
-        {event.seatsLeft} seats left across all tables
-      </p>
+      <div className="bg-muted/50 rounded-3xl p-6">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setGuests(Math.max(1, guests - 1))}
+            className="border-border flex h-12 w-12 items-center justify-center rounded-full border"
+            aria-label="Decrease guests"
+          >
+            <Minus className="h-5 w-5" />
+          </button>
+          <div className="text-center">
+            <div className="font-display text-6xl font-black">{guests}</div>
+            <div className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+              {guests === 1 ? "guest" : "guests"}
+            </div>
+          </div>
+          <button
+            onClick={() => setGuests(Math.min(Math.max(1, seatsLeft), guests + 1))}
+            disabled={guests >= seatsLeft}
+            className="border-border flex h-12 w-12 items-center justify-center rounded-full border disabled:opacity-40"
+            aria-label="Increase guests"
+          >
+            <Plus className="h-5 w-5" />
+          </button>
+        </div>
+        <p className="text-muted-foreground mt-4 text-center text-xs">
+          <span className={cn("font-semibold", seatsLeft === 0 ? "text-destructive" : "text-secondary")}>
+            {seatsLeft}
+          </span>{" "}
+          seat{seatsLeft === 1 ? "" : "s"} left across all tables
+        </p>
+      </div>
+      <div className="flex items-start gap-3 rounded-2xl border border-secondary/30 bg-secondary/5 p-4">
+        <Sparkles className="text-secondary mt-0.5 h-4 w-4 shrink-0" />
+        <p className="text-xs leading-relaxed text-foreground/85">
+          <span className="font-semibold">Smart matching</span> places you with sharers whose vibes align with yours.
+        </p>
+      </div>
     </div>
-    <div className="flex items-start gap-3 rounded-2xl border border-secondary/30 bg-secondary/5 p-4">
-      <Sparkles className="text-secondary mt-0.5 h-4 w-4 shrink-0" />
-      <p className="text-xs leading-relaxed text-foreground/85">
-        <span className="font-semibold">Smart matching</span> places you with sharers whose vibes align with yours.
-      </p>
-    </div>
-  </div>
-);
+  );
+};
 
 /* ---------- Step 2: Tables ---------- */
 const TablesStep = ({
+  eventId,
   tables,
   guests,
   tableId,
   onSelect,
 }: {
+  eventId: string;
   tables: Table[];
   guests: number;
   tableId: string | null;
   onSelect: (id: string) => void;
-}) => (
+}) => {
+  const { seatsLeftForTable } = useInventory();
+  return (
   <div className="space-y-4 animate-float-up">
     <div>
       <h2 className="font-display text-2xl font-black leading-tight">Pick your table</h2>
@@ -271,7 +284,7 @@ const TablesStep = ({
       </p>
     </div>
     {tables.map((t) => {
-      const free = t.capacity - t.taken;
+      const free = seatsLeftForTable(eventId, t.id);
       const fits = free >= guests;
       const active = tableId === t.id;
       return (
