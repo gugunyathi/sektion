@@ -3,11 +3,14 @@ import { VibeTag } from "../VibeTag";
 import { Shuffle, Sparkles, Zap } from "lucide-react";
 import { useState } from "react";
 import { BookingFlow } from "../BookingFlow";
+import { useInventory } from "@/context/InventoryContext";
 
 export const TableShareScreen = () => {
   const [idx, setIdx] = useState(0);
   const [open, setOpen] = useState(false);
   const event = EVENTS[idx];
+  const { seatsLeftForEvent } = useInventory();
+  const seatsLeft = seatsLeftForEvent(event.id);
 
   const shuffle = () => setIdx((i) => (i + 1) % EVENTS.length);
 
@@ -59,7 +62,7 @@ export const TableShareScreen = () => {
               ))}
             </div>
             <span className="text-xs text-foreground/80">
-              <span className="text-secondary font-semibold">{event.seatsLeft}</span> seats · ${event.pricePerSeat}/seat
+              <span className="text-secondary font-semibold">{seatsLeft}</span> seats · ${event.pricePerSeat}/seat
             </span>
           </div>
         </div>
