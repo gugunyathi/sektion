@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { ALL_VIBES, EVENTS, Event, Vibe } from "@/data/events";
 import { VibeTag } from "../VibeTag";
 import { BookingFlow } from "../BookingFlow";
+import { useInventory } from "@/context/InventoryContext";
 import { Search, Users } from "lucide-react";
 
 export const DiscoverScreen = () => {
@@ -9,6 +10,7 @@ export const DiscoverScreen = () => {
   const [activeVibes, setActiveVibes] = useState<Vibe[]>([]);
   const [selected, setSelected] = useState<Event | null>(null);
   const [open, setOpen] = useState(false);
+  const { seatsLeftForEvent } = useInventory();
 
   const toggle = (v: Vibe) =>
     setActiveVibes((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]));
@@ -87,7 +89,7 @@ export const DiscoverScreen = () => {
               <div className="mt-2 flex items-center justify-between">
                 <span className="font-display text-primary-glow text-base font-black">${e.pricePerSeat}</span>
                 <span className="text-foreground/80 flex items-center gap-1 text-[10px]">
-                  <Users className="h-3 w-3" /> {e.seatsLeft}
+                  <Users className="h-3 w-3" /> {seatsLeftForEvent(e.id)}
                 </span>
               </div>
             </div>
