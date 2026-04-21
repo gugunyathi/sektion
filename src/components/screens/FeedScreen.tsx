@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { EVENTS, Event } from "@/data/events";
 import { EventCard } from "../EventCard";
-import { EventSheet } from "../EventSheet";
+import { BookingFlow } from "../BookingFlow";
 
 export const FeedScreen = () => {
   const [open, setOpen] = useState(false);
@@ -26,7 +26,7 @@ export const FeedScreen = () => {
           />
         ))}
       </div>
-      <EventSheet event={selected} open={open} onOpenChange={setOpen} />
+      <BookingFlow event={selected} open={open} onOpenChange={setOpen} />
     </>
   );
 };

@@ -2,7 +2,7 @@ import { EVENTS } from "@/data/events";
 import { VibeTag } from "../VibeTag";
 import { Shuffle, Sparkles, Zap } from "lucide-react";
 import { useState } from "react";
-import { EventSheet } from "../EventSheet";
+import { BookingFlow } from "../BookingFlow";
 
 export const TableShareScreen = () => {
   const [idx, setIdx] = useState(0);
@@ -80,7 +80,7 @@ export const TableShareScreen = () => {
         </button>
       </div>
 
-      <EventSheet event={event} open={open} onOpenChange={setOpen} />
+      <BookingFlow event={event} open={open} onOpenChange={setOpen} />
     </div>
   );
 };
