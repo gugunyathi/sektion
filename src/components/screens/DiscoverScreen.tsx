@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { ALL_VIBES, EVENTS, Event, Vibe } from "@/data/events";
 import { VibeTag } from "../VibeTag";
-import { EventSheet } from "../EventSheet";
+import { BookingFlow } from "../BookingFlow";
 import { Search, Users } from "lucide-react";
 
 export const DiscoverScreen = () => {
@@ -97,7 +97,7 @@ export const DiscoverScreen = () => {
       {filtered.length === 0 && (
         <p className="text-muted-foreground mt-12 text-center text-sm">No tables match those vibes — try clearing filters.</p>
       )}
-      <EventSheet event={selected} open={open} onOpenChange={setOpen} />
+      <BookingFlow event={selected} open={open} onOpenChange={setOpen} />
     </div>
   );
 };
