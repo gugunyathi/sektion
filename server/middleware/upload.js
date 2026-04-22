@@ -4,10 +4,16 @@ const fs = require('fs');
 
 const UPLOAD_DIR = path.join(__dirname, '../uploads');
 
-// Ensure directories exist
-['avatars', 'media', 'items'].forEach((dir) => {
-  fs.mkdirSync(path.join(UPLOAD_DIR, dir), { recursive: true });
-});
+// Ensure directories exist (skip on read-only filesystems like Vercel serverless)
+if (process.env.NODE_ENV !== 'production') {
+  try {
+    ['avatars', 'media', 'items'].forEach((dir) => {
+      fs.mkdirSync(path.join(UPLOAD_DIR, dir), { recursive: true });
+    });
+  } catch (e) {
+    console.warn('Could not create upload dirs:', e.message);
+  }
+}
 
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/quicktime'];
 const MAX_SIZE_IMAGE = 8 * 1024 * 1024;  // 8MB
