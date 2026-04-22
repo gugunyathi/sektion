@@ -78,6 +78,16 @@ export const HoldBanner = () => {
             {label}
           </span>
         </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            releaseSeat();
+          }}
+          aria-label="Release hold"
+          className="border-border hover:border-destructive hover:text-destructive ml-1 shrink-0 rounded-full border p-2 text-muted-foreground transition-colors"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
         <div className="bg-background/40 absolute inset-x-3 bottom-1.5 h-1 overflow-hidden rounded-full">
           <div
             className="bg-gradient-vibe h-full transition-all"
