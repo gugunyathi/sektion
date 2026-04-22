@@ -110,13 +110,12 @@ export const SHARERS: Sharer[] = [
 
 // System-uploaded event videos (served from /public)
 const BIRTHDAY = "/birthday.mp4";   // Neon Saturdays — first card
-const CABARET   = "/cabaret.mp4";   // Masquerade Affair
+const SKYLINE  = "/skyline.mp4";    // Skyline Supper
+const CLUB     = "/club.mp4";       // Subterra: Techno Night
+const CABARET  = "/cabaret.mp4";    // Masquerade Affair
 
-// Fallback CDN placeholders for other events
-const V2 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4";
+// Fallback CDN placeholder for The Velvet Hour
 const V3 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
-const V4 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4";
-const V5 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4";
 
 const mkMedia = (
   eventId: string,
@@ -224,13 +223,13 @@ export const EVENTS: Event[] = [
 ];
 
 // Attach media to each event (2 videos + 2 images per event)
-// e1 and e5 use system-uploaded local videos; others use CDN placeholders
+// Local system videos used where available; CDN fallback for The Velvet Hour
 const MEDIA_ASSIGN: Record<string, [string, string]> = {
   e1: [BIRTHDAY, V3],
-  e2: [V4, V2],
-  e3: [V5, V2],
-  e4: [V2, V3],
-  e5: [CABARET, V4],
+  e2: [SKYLINE,  V3],
+  e3: [CLUB,     V3],
+  e4: [V3,       V3],
+  e5: [CABARET,  V3],
 };
 const ALT_IMAGE: Record<string, string> = {
   e1: rave, e2: lounge, e3: club, e4: themed, e5: dining,
