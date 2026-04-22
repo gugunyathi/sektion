@@ -29,6 +29,18 @@ type Ctx = {
 
 const InventoryContext = createContext<Ctx | null>(null);
 
+/** Fallback used if a consumer renders outside the provider (e.g. during HMR). */
+const fallbackCtx: Ctx = {
+  seatsLeftForTable: (eventId, tableId) => {
+    const event = EVENTS.find((e) => e.id === eventId);
+    if (!event) return 0;
+    const table = getTablesForEvent(event).find((t) => t.id === tableId);
+    if (!table) return 0;
+    return Math.max(0, table.capacity - table.taken);
+  },
+  seatsLeftForEvent: (eventId) => EVENTS.find((e) => e.id === eventId)?.seatsLeft ?? 0,
+};
+
 const readLocks = (): Lock[] => {
   try {
     const raw = localStorage.getItem(LOCKS_KEY);
@@ -130,6 +142,6 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
 
 export const useInventory = () => {
   const ctx = useContext(InventoryContext);
-  if (!ctx) throw new Error("useInventory must be used within InventoryProvider");
-  return ctx;
+  // Fall back to base inventory if rendered outside the provider (avoids HMR crashes).
+  return ctx ?? fallbackCtx;
 };
