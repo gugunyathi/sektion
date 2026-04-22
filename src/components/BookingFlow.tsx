@@ -126,7 +126,7 @@ export const BookingFlow = ({
           )}
           <div className="text-center">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-              {step === "done" ? "Confirmed" : "TableShare"}
+              {step === "done" ? "Confirmed" : "Sektion"}
             </p>
             <p className="font-display text-sm font-bold">{event.title}</p>
           </div>

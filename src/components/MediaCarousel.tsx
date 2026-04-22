@@ -11,9 +11,11 @@ type Props = {
   onAdd?: () => void;
   onRemove?: (id: string) => void;
   onFlag?: (id: string) => void;
+  /** fires whenever the visible slide changes, so the parent can react */
+  onCurrentChange?: (item: { id: string; kind: MediaItem["kind"]; status: MediaItem["status"] } | null) => void;
 };
 
-export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag }: Props) => {
+export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag, onCurrentChange }: Props) => {
   const [index, setIndex] = useState(0);
   const trackRef = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
@@ -30,6 +32,11 @@ export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag }
   
   const safeIndex = Math.min(index, Math.max(0, sorted.length - 1));
   const current = sorted[safeIndex];
+
+  // Notify parent of current slide
+  useEffect(() => {
+    onCurrentChange?.(current ? { id: current.id, kind: current.kind, status: current.status } : null);
+  }, [current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Autoplay current video with sound enabled, pause others
   useEffect(() => {
@@ -167,54 +174,9 @@ export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag }
         ))}
       </div>
 
-      {/* Media meta + moderation row (left side, above bottom info) */}
-      <div className="absolute left-4 top-12 z-[3] flex items-center gap-2 flex-wrap">
-        {current?.kind === "video" && current.status === "approved" && (
-          <span className="glass flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider">
-            <Play className="h-3 w-3 fill-current" /> Live
-          </span>
-        )}
-        {/* Moderation status badge */}
-        {current && current.status === "approved" && (
-          <span className="glass flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-green-500">
-            <CheckCircle2 className="h-3 w-3" /> Approved
-          </span>
-        )}
-        {current && current.status === "pending" && (
-          <span className="glass flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-yellow-500">
-            <Clock className="h-3 w-3" /> Pending
-          </span>
-        )}
-        {current && (
-          <span className="glass rounded-full px-2 py-1 text-[10px] font-medium text-foreground/80">
-            {safeIndex + 1}/{sorted.length}
-          </span>
-        )}
-      </div>
-
-      {/* Host & community controls */}
-      <div className="absolute right-4 top-12 z-[3] flex items-center gap-2">
-        {isHost && (
-          <>
-            <button
-              onClick={onAdd}
-              aria-label="Upload media"
-              className="glass flex h-8 w-8 items-center justify-center rounded-full"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-            {current && (
-              <button
-                onClick={() => handleRemove(current.id)}
-                aria-label="Remove media"
-                className="glass flex h-8 w-8 items-center justify-center rounded-full"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            )}
-          </>
-        )}
-        {!isHost && current && current.status === "approved" && (
+      {/* Community report control (non-host only) */}
+      {!isHost && current && current.status === "approved" && (
+        <div className="absolute right-4 top-12 z-[3]">
           <button
             onClick={() => handleFlag(current.id)}
             aria-label="Report media"
@@ -223,8 +185,8 @@ export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag }
             <Flag className="h-3.5 w-3.5" />
             <span className="text-[10px] font-semibold uppercase tracking-wider">Report</span>
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

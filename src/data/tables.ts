@@ -21,6 +21,7 @@ export type IncludedItem = {
   emoji: string;
   name: string;
   category: "drink" | "food" | "mixer" | "extra";
+  image?: string;
 };
 
 export type Table = {

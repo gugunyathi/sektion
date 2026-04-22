@@ -3,7 +3,9 @@ import { ALL_VIBES, EVENTS, Event, Vibe } from "@/data/events";
 import { VibeTag } from "../VibeTag";
 import { BookingFlow } from "../BookingFlow";
 import { useInventory } from "@/context/InventoryContext";
-import { Search, Users } from "lucide-react";
+import { Bookmark, Search, Users } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { useBookmarks } from "@/context/BookmarksContext";
 
 export const DiscoverScreen = () => {
   const [query, setQuery] = useState("");
@@ -12,8 +14,29 @@ export const DiscoverScreen = () => {
   const [open, setOpen] = useState(false);
   const { seatsLeftForEvent } = useInventory();
 
+  const { isAuthed, requireAuth } = useAuth();
+  const { isBookmarked, toggleBookmark } = useBookmarks();
+
   const toggle = (v: Vibe) =>
     setActiveVibes((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]));
+
+  const handleOpenBooking = (e: Event) => {
+    if (!isAuthed) {
+      requireAuth(`Sign in to book a table at ${e.title}.`);
+      return;
+    }
+    setSelected(e);
+    setOpen(true);
+  };
+
+  const handleBookmark = (e: Event, ev: React.MouseEvent) => {
+    ev.stopPropagation();
+    if (!isAuthed) {
+      requireAuth("Sign in to save your favourite events.");
+      return;
+    }
+    toggleBookmark({ type: "event", refId: e.id, title: e.title, subtitle: e.venue, image: e.image, city: e.city });
+  };
 
   const filtered = useMemo(() => {
     return EVENTS.filter((e) => {
@@ -58,10 +81,7 @@ export const DiscoverScreen = () => {
         {filtered.map((e) => (
           <button
             key={e.id}
-            onClick={() => {
-              setSelected(e);
-              setOpen(true);
-            }}
+            onClick={() => handleOpenBooking(e)}
             className="group relative aspect-[3/4] overflow-hidden rounded-2xl text-left animate-float-up"
           >
             <img
@@ -82,6 +102,13 @@ export const DiscoverScreen = () => {
                   Hot
                 </span>
               )}
+              <button
+                onClick={(ev) => handleBookmark(e, ev)}
+                className="glass ml-auto flex h-6 w-6 items-center justify-center rounded-full"
+                aria-label="Save"
+              >
+                <Bookmark className={`h-3 w-3 ${isBookmarked(e.id) ? "fill-accent text-accent" : "text-white/80"}`} />
+              </button>
             </div>
             <div className="absolute inset-x-0 bottom-0 p-3">
               <p className="font-display text-sm font-bold leading-tight">{e.title}</p>
