@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { getTablesForEvent, IncludedItem } from "@/data/tables";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 
-export const EventCard = ({ event, onOpen }: { event: Event; onOpen: (e: Event) => void }) => {
+export const EventCard = ({ event, onOpen, initialActive = false }: { event: Event; onOpen: (e: Event) => void; initialActive?: boolean }) => {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [sharersOpen, setSharersOpen] = useState(false);
@@ -23,7 +23,7 @@ export const EventCard = ({ event, onOpen }: { event: Event; onOpen: (e: Event) 
   const [itemPickerTab, setItemPickerTab] = useState<"upload" | "venue">("venue");
   const [media, setMedia] = useState<MediaItem[]>(event.media ?? []);
   const [currentMedia, setCurrentMedia] = useState<{ id: string; kind: MediaItem["kind"]; status: MediaItem["status"] } | null>(null);
-  const [active, setActive] = useState(false);
+  const [active, setActive] = useState(initialActive);
   const articleRef = useRef<HTMLElement>(null);
   const itemFileRef = useRef<HTMLInputElement>(null);
   const { seatsLeftForEvent } = useInventory();
@@ -56,8 +56,8 @@ export const EventCard = ({ event, onOpen }: { event: Event; onOpen: (e: Event) 
     const el = articleRef.current;
     if (!el) return;
     const obs = new IntersectionObserver(
-      ([entry]) => setActive(entry.intersectionRatio > 0.6),
-      { threshold: [0, 0.6, 1] },
+      ([entry]) => setActive(entry.intersectionRatio > 0.4),
+      { threshold: [0, 0.4, 1] },
     );
     obs.observe(el);
     return () => obs.disconnect();

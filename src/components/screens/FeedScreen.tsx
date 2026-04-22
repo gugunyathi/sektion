@@ -120,11 +120,12 @@ export const FeedScreen = () => {
         onScroll={handleScroll}
         className="snap-feed no-scrollbar h-[100dvh] overflow-y-scroll pt-[max(3.5rem,calc(1rem+env(safe-area-inset-top)))]"
       >
-        {EVENTS.map((e) => (
+        {EVENTS.map((e, i) => (
           <EventCard
             key={e.id}
             event={{ ...e, media: allMedia[e.id] }}
             onOpen={handleOpenBooking}
+            initialActive={i === 0}
           />
         ))}
       </div>

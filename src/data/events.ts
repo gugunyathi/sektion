@@ -109,12 +109,13 @@ export const SHARERS: Sharer[] = [
 ];
 
 // System-uploaded event videos (served from /public)
-const BIRTHDAY = "/birthday.mp4";   // Neon Saturdays — first card
+const BIRTHDAY = "/birthday.mp4";   // Neon Saturdays
 const SKYLINE  = "/skyline.mp4";    // Skyline Supper
 const CLUB     = "/club.mp4";       // Subterra: Techno Night
+const VELVET   = "/velvet.mp4";     // The Velvet Hour
 const CABARET  = "/cabaret.mp4";    // Masquerade Affair
 
-// Fallback CDN placeholder for The Velvet Hour
+// CDN fallback second-slot placeholder
 const V3 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
 
 const mkMedia = (
@@ -223,12 +224,12 @@ export const EVENTS: Event[] = [
 ];
 
 // Attach media to each event (2 videos + 2 images per event)
-// Local system videos used where available; CDN fallback for The Velvet Hour
+// All events now use local system-uploaded videos as the primary slot
 const MEDIA_ASSIGN: Record<string, [string, string]> = {
   e1: [BIRTHDAY, V3],
   e2: [SKYLINE,  V3],
   e3: [CLUB,     V3],
-  e4: [V3,       V3],
+  e4: [VELVET,   V3],
   e5: [CABARET,  V3],
 };
 const ALT_IMAGE: Record<string, string> = {

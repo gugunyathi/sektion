@@ -38,15 +38,23 @@ export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag, 
     onCurrentChange?.(current ? { id: current.id, kind: current.kind, status: current.status } : null);
   }, [current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Autoplay current video with sound enabled, pause others
+  // Autoplay current video immediately when active; unmute after play starts
   useEffect(() => {
     Object.entries(videoRefs.current).forEach(([id, vid]) => {
       if (!vid) return;
-      if (active && current && id === current.id && current.kind === "video" && current.status === "approved") {
-        vid.muted = false; // Enable sound
-        vid.play().catch(() => {});
+      const isTarget = active && current && id === current.id && current.kind === "video" && current.status === "approved";
+      if (isTarget) {
+        // Start muted so browsers allow autoplay, then unmute once playing
+        vid.muted = true;
+        const playPromise = vid.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => { vid.muted = false; })
+            .catch(() => { /* autoplay blocked — stay muted */ });
+        }
       } else {
         vid.pause();
+        vid.muted = true;
       }
     });
   }, [active, current]);
@@ -121,10 +129,10 @@ export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag, 
                   src={m.src}
                   poster={m.poster}
                   className="absolute inset-0 h-full w-full object-cover"
-                  muted={false}
+                  muted
                   loop
                   playsInline
-                  preload="metadata"
+                  preload={i === safeIndex ? "auto" : "metadata"}
                 />
               ) : (
                 <img
