@@ -25,6 +25,20 @@ export type Sharer = {
   bio?: string;
 };
 
+export type MediaKind = "video" | "image";
+export type ModerationStatus = "approved" | "pending" | "frozen";
+
+export type MediaItem = {
+  id: string;
+  kind: MediaKind;
+  src: string;
+  poster?: string;
+  caption?: string;
+  uploadedBy?: string;
+  status: ModerationStatus;
+  flags: number;
+};
+
 export type Event = {
   id: string;
   title: string;
@@ -35,6 +49,7 @@ export type Event = {
   category: "Club" | "Dining" | "Lounge" | "Rave" | "Themed";
   vibes: Vibe[];
   image: string;
+  media?: MediaItem[];
   pricePerSeat: number;
   seatsLeft: number;
   totalSeats: number;
@@ -89,6 +104,26 @@ export const SHARERS: Sharer[] = [
     relationship: "couple",
     bio: "Champagne, masquerades, and ice-cold martinis.",
   },
+];
+
+// Mock placeholder media — Google's public sample CDN videos + reused event imagery
+const V1 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+const V2 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4";
+const V3 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
+const V4 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4";
+const V5 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4";
+
+const mkMedia = (
+  eventId: string,
+  primary: string,
+  alt: string,
+  v1: string,
+  v2: string,
+): MediaItem[] => [
+  { id: `${eventId}-m1`, kind: "video", src: v1, poster: primary, caption: "Venue walkthrough", uploadedBy: "host", status: "approved", flags: 0 },
+  { id: `${eventId}-m2`, kind: "image", src: primary, caption: "Table setting", uploadedBy: "host", status: "approved", flags: 0 },
+  { id: `${eventId}-m3`, kind: "video", src: v2, poster: alt, caption: "Last week's vibe", uploadedBy: "host", status: "approved", flags: 0 },
+  { id: `${eventId}-m4`, kind: "image", src: alt, caption: "Crowd shot", uploadedBy: "host", status: "approved", flags: 0 },
 ];
 
 export const EVENTS: Event[] = [
@@ -177,3 +212,19 @@ export const EVENTS: Event[] = [
     trending: true,
   },
 ];
+
+// Attach mock media to each event (2 videos + 2 images per event)
+const MEDIA_ASSIGN: Record<string, [string, string]> = {
+  e1: [V1, V3],
+  e2: [V4, V2],
+  e3: [V5, V1],
+  e4: [V2, V3],
+  e5: [V3, V4],
+};
+const ALT_IMAGE: Record<string, string> = {
+  e1: rave, e2: lounge, e3: club, e4: themed, e5: dining,
+};
+EVENTS.forEach((e) => {
+  const [v1, v2] = MEDIA_ASSIGN[e.id] ?? [V1, V2];
+  e.media = mkMedia(e.id, e.image, ALT_IMAGE[e.id] ?? e.image, v1, v2);
+});
