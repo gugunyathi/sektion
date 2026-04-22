@@ -33,6 +33,7 @@ export const BookingFlow = ({
   onOpenChange: (o: boolean) => void;
 }) => {
   const { createHold, confirmPayment } = useBooking();
+  const { seatsLeftForTable } = useInventory();
   const [step, setStep] = useState<Step>("guests");
   const [guests, setGuests] = useState(1);
   const [tableId, setTableId] = useState<string | null>(null);
@@ -70,6 +71,17 @@ export const BookingFlow = ({
   };
 
   const handlePay = () => {
+    if (!selectedTable) return;
+    // Final live-availability check: count current user's own hold as already
+    // accounted for, so re-validate against table.capacity - other locks.
+    const free = seatsLeftForTable(event.id, selectedTable.id) + guests;
+    if (free < guests) {
+      toast.error("Seats just got taken", {
+        description: "Please pick another table — this one no longer fits your party.",
+      });
+      setStep("tables");
+      return;
+    }
     confirmPayment();
     setStep("done");
     toast.success("Seat confirmed 🎉", { description: `${event.title} · ${event.date}` });
@@ -288,21 +300,39 @@ const TablesStep = ({
       const free = seatsLeftForTable(eventId, t.id);
       const fits = free >= guests;
       const active = tableId === t.id;
+      const lockedOut = !fits;
       return (
         <button
           key={t.id}
           onClick={() => fits && onSelect(t.id)}
-          disabled={!fits}
+          disabled={lockedOut}
+          aria-disabled={lockedOut}
           className={cn(
-            "block w-full rounded-2xl border p-4 text-left transition-all",
+            "relative block w-full overflow-hidden rounded-2xl border p-4 text-left transition-all",
             active
               ? "border-primary bg-primary/10 shadow-neon"
               : fits
                 ? "border-border bg-muted/40 hover:border-primary/40"
-                : "border-border bg-muted/20 opacity-50",
+                : "border-destructive/30 bg-destructive/5 cursor-not-allowed",
           )}
         >
-          <div className="flex items-start justify-between gap-3">
+          {lockedOut && (
+            <>
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 opacity-[0.07]"
+                style={{
+                  backgroundImage:
+                    "repeating-linear-gradient(45deg, hsl(var(--destructive)) 0 8px, transparent 8px 16px)",
+                }}
+              />
+              <span className="bg-destructive/15 text-destructive absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+                <Lock className="h-3 w-3" />
+                {free === 0 ? "Full" : `Needs ${guests}`}
+              </span>
+            </>
+          )}
+          <div className={cn("flex items-start justify-between gap-3 relative", lockedOut && "opacity-60")}>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <p className="font-display text-base font-bold">{t.label}</p>
