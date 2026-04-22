@@ -1,16 +1,41 @@
-import { EVENTS } from "@/data/events";
+﻿import { EVENTS } from "@/data/events";
 import { VibeTag } from "../VibeTag";
-import { Shuffle, Sparkles, Zap } from "lucide-react";
+import { Shuffle, Sparkles, Zap, Building2 } from "lucide-react";
 import { useState } from "react";
 import { BookingFlow } from "../BookingFlow";
 import { useInventory } from "@/context/InventoryContext";
+import { VenueManagerPanel } from "../VenueManagerPanel";
+import { getTablesForEvent } from "@/data/tables";
+import { useSeatAvailability } from "@/context/SeatAvailabilityContext";
 
 export const TableShareScreen = () => {
   const [idx, setIdx] = useState(0);
   const [open, setOpen] = useState(false);
+  const [venueOpen, setVenueOpen] = useState(false);
   const event = EVENTS[idx];
   const { seatsLeftForEvent } = useInventory();
   const seatsLeft = seatsLeftForEvent(event.id);
+  const tables = getTablesForEvent(event);
+  const { releaseSeat } = useSeatAvailability();
+
+  const [attendees, setAttendees] = useState(() => [
+    { id: "a1", name: "Zara K.", seats: 2, status: "checked_in" as const, tableId: tables[0]?.id, avatar: "" },
+    { id: "a2", name: "Diego M.", seats: 1, status: "pending" as const, avatar: "" },
+    { id: "a3", name: "Niko R.", seats: 3, status: "pending" as const, avatar: "" },
+    { id: "a4", name: "Sam L.", seats: 2, status: "no_show" as const, tableId: tables[1]?.id, avatar: "" },
+  ]);
+
+  const handlePlaceAttendee = (attendeeId: string, tableId: string) => {
+    setAttendees((prev) => prev.map((a) => a.id === attendeeId ? { ...a, tableId, status: "checked_in" as const } : a));
+  };
+  const handleMarkNoShow = (attendeeId: string) => {
+    const a = attendees.find((x) => x.id === attendeeId);
+    if (a?.tableId) releaseSeat({ eventId: event.id, tableId: a.tableId, seatsToRelease: a.seats, reason: "no-show" });
+    setAttendees((prev) => prev.map((a) => a.id === attendeeId ? { ...a, status: "no_show" as const } : a));
+  };
+  const handleReleaseSeats = (tableId: string, seats: number) => {
+    releaseSeat({ eventId: event.id, tableId, seatsToRelease: seats, reason: "voluntary" });
+  };
 
   const shuffle = () => setIdx((i) => (i + 1) % EVENTS.length);
 
@@ -21,7 +46,7 @@ export const TableShareScreen = () => {
           Smart Match
         </span>
         <h1 className="font-display mt-1 text-3xl font-black leading-tight tracking-tight">
-          Tonight's <span className="text-gradient-vibe">surprise</span> table.
+          {"Tonight's"} <span className="text-gradient-vibe">surprise</span> table.
         </h1>
         <p className="text-muted-foreground mt-2 text-sm">
           AI-curated based on your vibes. Hit shuffle for chaos.
@@ -57,8 +82,8 @@ export const TableShareScreen = () => {
           <p className="text-foreground/60 mt-1 text-xs">{event.date} · {event.time}</p>
           <div className="mt-4 flex items-center gap-3">
             <div className="flex -space-x-2">
-              {event.sharers.slice(0,3).map(s => (
-                <img key={s.id} src={s.avatar} alt={s.name} className="border-background h-8 w-8 rounded-full border-2 object-cover" loading="lazy" width={48} height={48}/>
+              {event.sharers.slice(0, 3).map(s => (
+                <img key={s.id} src={s.avatar} alt={s.name} className="border-background h-8 w-8 rounded-full border-2 object-cover" loading="lazy" width={48} height={48} />
               ))}
             </div>
             <span className="text-xs text-foreground/80">
@@ -83,7 +108,24 @@ export const TableShareScreen = () => {
         </button>
       </div>
 
+      <button
+        onClick={() => setVenueOpen(true)}
+        className="border-border bg-muted/30 active:bg-muted mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border text-sm font-semibold transition-colors"
+      >
+        <Building2 className="h-4 w-4" /> Venue Manager Panel
+      </button>
+
       <BookingFlow event={event} open={open} onOpenChange={setOpen} />
+      <VenueManagerPanel
+        event={event}
+        tables={tables}
+        open={venueOpen}
+        onOpenChange={setVenueOpen}
+        attendees={attendees}
+        onPlaceAttendee={handlePlaceAttendee}
+        onMarkNoShow={handleMarkNoShow}
+        onReleaseSeats={handleReleaseSeats}
+      />
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import { MediaItem } from "@/data/events";
-import { useEffect, useRef, useState, TouchEvent } from "react";
+import { useEffect, useRef, useState, TouchEvent, KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
-import { Flag, Plus, Trash2, ShieldAlert, Play } from "lucide-react";
+import { Flag, Plus, Trash2, ShieldAlert, Play, CheckCircle2, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 type Props = {
@@ -19,16 +19,24 @@ export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag }
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
   const touchStartX = useRef<number | null>(null);
 
+  // Filter frozen content, then sort to prioritize videos first
   const visible = media.filter((m) => m.status !== "frozen" || isHost);
-  const safeIndex = Math.min(index, Math.max(0, visible.length - 1));
-  const current = visible[safeIndex];
+  const sorted = [...visible].sort((a, b) => {
+    // Videos first
+    if (a.kind === "video" && b.kind !== "video") return -1;
+    if (a.kind !== "video" && b.kind === "video") return 1;
+    return 0;
+  });
+  
+  const safeIndex = Math.min(index, Math.max(0, sorted.length - 1));
+  const current = sorted[safeIndex];
 
-  // Autoplay current video, pause others
+  // Autoplay current video with sound enabled, pause others
   useEffect(() => {
     Object.entries(videoRefs.current).forEach(([id, vid]) => {
       if (!vid) return;
       if (active && current && id === current.id && current.kind === "video" && current.status === "approved") {
-        vid.muted = true;
+        vid.muted = false; // Enable sound
         vid.play().catch(() => {});
       } else {
         vid.pause();
@@ -37,8 +45,8 @@ export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag }
   }, [active, current]);
 
   const go = (next: number) => {
-    if (visible.length === 0) return;
-    const clamped = (next + visible.length) % visible.length;
+    if (sorted.length === 0) return;
+    const clamped = (next + sorted.length) % sorted.length;
     setIndex(clamped);
   };
 
@@ -52,6 +60,17 @@ export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag }
     touchStartX.current = null;
   };
 
+  // Handle keyboard arrow keys for navigation
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      go(safeIndex - 1);
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      go(safeIndex + 1);
+    }
+  };
+
   const handleFlag = (id: string) => {
     onFlag?.(id);
     toast.success("Reported. Frozen pending review by moderators.");
@@ -62,7 +81,7 @@ export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag }
     toast.success("Media removed.");
   };
 
-  if (visible.length === 0) {
+  if (sorted.length === 0) {
     return <div className="absolute inset-0 bg-muted" />;
   }
 
@@ -71,10 +90,14 @@ export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag }
       className="absolute inset-0"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role="region"
+      aria-label="Media carousel"
     >
       {/* Slides */}
       <div ref={trackRef} className="absolute inset-0">
-        {visible.map((m, i) => {
+        {sorted.map((m, i) => {
           const isCurrent = i === safeIndex;
           const frozen = m.status === "frozen";
           return (
@@ -91,7 +114,7 @@ export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag }
                   src={m.src}
                   poster={m.poster}
                   className="absolute inset-0 h-full w-full object-cover"
-                  muted
+                  muted={false}
                   loop
                   playsInline
                   preload="metadata"
@@ -132,7 +155,7 @@ export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag }
 
       {/* Progress bars (Stories style) */}
       <div className="absolute inset-x-0 top-0 z-[3] flex gap-1 px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-        {visible.map((_, i) => (
+        {sorted.map((_, i) => (
           <div key={i} className="h-0.5 flex-1 overflow-hidden rounded-full bg-foreground/25">
             <div
               className={cn(
@@ -145,15 +168,26 @@ export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag }
       </div>
 
       {/* Media meta + moderation row (left side, above bottom info) */}
-      <div className="absolute left-4 top-12 z-[3] flex items-center gap-2">
+      <div className="absolute left-4 top-12 z-[3] flex items-center gap-2 flex-wrap">
         {current?.kind === "video" && current.status === "approved" && (
           <span className="glass flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider">
             <Play className="h-3 w-3 fill-current" /> Live
           </span>
         )}
+        {/* Moderation status badge */}
+        {current && current.status === "approved" && (
+          <span className="glass flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-green-500">
+            <CheckCircle2 className="h-3 w-3" /> Approved
+          </span>
+        )}
+        {current && current.status === "pending" && (
+          <span className="glass flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-yellow-500">
+            <Clock className="h-3 w-3" /> Pending
+          </span>
+        )}
         {current && (
           <span className="glass rounded-full px-2 py-1 text-[10px] font-medium text-foreground/80">
-            {safeIndex + 1}/{visible.length}
+            {safeIndex + 1}/{sorted.length}
           </span>
         )}
       </div>

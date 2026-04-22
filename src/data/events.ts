@@ -122,8 +122,8 @@ const mkMedia = (
 ): MediaItem[] => [
   { id: `${eventId}-m1`, kind: "video", src: v1, poster: primary, caption: "Venue walkthrough", uploadedBy: "host", status: "approved", flags: 0 },
   { id: `${eventId}-m2`, kind: "image", src: primary, caption: "Table setting", uploadedBy: "host", status: "approved", flags: 0 },
-  { id: `${eventId}-m3`, kind: "video", src: v2, poster: alt, caption: "Last week's vibe", uploadedBy: "host", status: "approved", flags: 0 },
-  { id: `${eventId}-m4`, kind: "image", src: alt, caption: "Crowd shot", uploadedBy: "host", status: "approved", flags: 0 },
+  { id: `${eventId}-m3`, kind: "video", src: v2, poster: alt, caption: "Last week's vibe", uploadedBy: "host", status: "pending", flags: 0 },
+  { id: `${eventId}-m4`, kind: "image", src: alt, caption: "Crowd shot", uploadedBy: "guest", status: "frozen", flags: 3 },
 ];
 
 export const EVENTS: Event[] = [

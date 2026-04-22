@@ -16,6 +16,13 @@ export type SeekingSpec = {
   pitch?: string;
 };
 
+export type IncludedItem = {
+  id: string;
+  emoji: string;
+  name: string;
+  category: "drink" | "food" | "mixer" | "extra";
+};
+
 export type Table = {
   id: string;
   label: string;
@@ -26,6 +33,7 @@ export type Table = {
   hostedBy?: Sharer;
   tableType: TableType;
   seeking?: SeekingSpec;
+  includedItems?: IncludedItem[];
 };
 
 /** Deterministically derive 3 tables from an event so the UI is stable across renders. */
@@ -45,6 +53,14 @@ export const getTablesForEvent = (event: Event): Table[] => {
       perks: ["2 bottles included", "Bottle service", "Best view"],
       vibe: "High-energy",
       hostedBy: sharers[0],
+      includedItems: [
+        { id: "i1", emoji: "🥂", name: "Champagne", category: "drink" },
+        { id: "i2", emoji: "🥃", name: "Whiskey", category: "drink" },
+        { id: "i3", emoji: "🍹", name: "Cocktail mixer", category: "mixer" },
+        { id: "i4", emoji: "🍾", name: "Bottle service", category: "drink" },
+        { id: "i5", emoji: "🍱", name: "Snack platter", category: "food" },
+        { id: "i6", emoji: "🫒", name: "Tapas", category: "food" },
+      ],
       tableType: variant === 0 ? "gender_ratio" : "host_pays",
       seeking:
         variant === 0
@@ -72,6 +88,12 @@ export const getTablesForEvent = (event: Event): Table[] => {
       perks: ["Private booth", "Welcome cocktail"],
       vibe: "Curated mix",
       hostedBy: sharers[1] ?? sharers[0],
+      includedItems: [
+        { id: "i1", emoji: "🍸", name: "Welcome cocktail", category: "drink" },
+        { id: "i2", emoji: "🧃", name: "Juice mixers", category: "mixer" },
+        { id: "i3", emoji: "🍕", name: "Pizza bites", category: "food" },
+        { id: "i4", emoji: "🍫", name: "Dessert board", category: "food" },
+      ],
       tableType: "lgbtq",
       seeking: {
         ageMin: 21,
@@ -88,6 +110,12 @@ export const getTablesForEvent = (event: Event): Table[] => {
       perks: ["Chill seating", "Snack platter"],
       vibe: "Conversational",
       hostedBy: sharers[2] ?? sharers[0],
+      includedItems: [
+        { id: "i1", emoji: "🍷", name: "House wine", category: "drink" },
+        { id: "i2", emoji: "🧆", name: "Mezze platter", category: "food" },
+        { id: "i3", emoji: "💧", name: "Still water", category: "mixer" },
+        { id: "i4", emoji: "🍬", name: "After-dinner mints", category: "extra" },
+      ],
       tableType: "couples",
       seeking: {
         ageMin: 25,
