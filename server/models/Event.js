@@ -1,5 +1,16 @@
 const mongoose = require('mongoose');
 
+const mediaItemSchema = new mongoose.Schema({
+  id:         { type: String, required: true },
+  kind:       { type: String, enum: ['video', 'image'], required: true },
+  src:        { type: String, required: true },
+  poster:     String,
+  caption:    String,
+  uploadedBy: { type: String, default: 'host' }, // 'system' | 'host' | 'guest' | userId
+  status:     { type: String, enum: ['approved', 'pending', 'frozen'], default: 'approved' },
+  flags:      { type: Number, default: 0 },
+}, { _id: false });
+
 const includedItemSchema = new mongoose.Schema({
   id:       String,
   emoji:    String,
@@ -38,6 +49,7 @@ const eventSchema = new mongoose.Schema(
     surge:       { type: Boolean, default: false },
     isActive:    { type: Boolean, default: true },
     tables:      [tableSchema],
+    media:       [mediaItemSchema],
     createdBy:   { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true }

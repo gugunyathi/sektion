@@ -108,8 +108,11 @@ export const SHARERS: Sharer[] = [
   },
 ];
 
-// Mock placeholder media — Google's public sample CDN videos + reused event imagery
-const V1 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+// System-uploaded event videos (served from /public)
+const BIRTHDAY = "/birthday.mp4";   // Neon Saturdays — first card
+const CABARET   = "/cabaret.mp4";   // Masquerade Affair
+
+// Fallback CDN placeholders for other events
 const V2 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4";
 const V3 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
 const V4 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4";
@@ -122,7 +125,7 @@ const mkMedia = (
   v1: string,
   v2: string,
 ): MediaItem[] => [
-  { id: `${eventId}-m1`, kind: "video", src: v1, poster: primary, caption: "Venue walkthrough", uploadedBy: "host", status: "approved", flags: 0 },
+  { id: `${eventId}-m1`, kind: "video", src: v1, poster: primary, caption: "Venue walkthrough", uploadedBy: "system", status: "approved", flags: 0 },
   { id: `${eventId}-m2`, kind: "image", src: primary, caption: "Table setting", uploadedBy: "host", status: "approved", flags: 0 },
   { id: `${eventId}-m3`, kind: "video", src: v2, poster: alt, caption: "Last week's vibe", uploadedBy: "host", status: "pending", flags: 0 },
   { id: `${eventId}-m4`, kind: "image", src: alt, caption: "Crowd shot", uploadedBy: "guest", status: "frozen", flags: 3 },
@@ -220,13 +223,14 @@ export const EVENTS: Event[] = [
   },
 ];
 
-// Attach mock media to each event (2 videos + 2 images per event)
+// Attach media to each event (2 videos + 2 images per event)
+// e1 and e5 use system-uploaded local videos; others use CDN placeholders
 const MEDIA_ASSIGN: Record<string, [string, string]> = {
-  e1: [V1, V3],
+  e1: [BIRTHDAY, V3],
   e2: [V4, V2],
-  e3: [V5, V1],
+  e3: [V5, V2],
   e4: [V2, V3],
-  e5: [V3, V4],
+  e5: [CABARET, V4],
 };
 const ALT_IMAGE: Record<string, string> = {
   e1: rave, e2: lounge, e3: club, e4: themed, e5: dining,
