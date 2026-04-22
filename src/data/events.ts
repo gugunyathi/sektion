@@ -25,6 +25,20 @@ export type Sharer = {
   bio?: string;
 };
 
+export type MediaKind = "video" | "image";
+export type ModerationStatus = "approved" | "pending" | "frozen";
+
+export type MediaItem = {
+  id: string;
+  kind: MediaKind;
+  src: string;
+  poster?: string;
+  caption?: string;
+  uploadedBy?: string;
+  status: ModerationStatus;
+  flags: number;
+};
+
 export type Event = {
   id: string;
   title: string;
@@ -35,6 +49,7 @@ export type Event = {
   category: "Club" | "Dining" | "Lounge" | "Rave" | "Themed";
   vibes: Vibe[];
   image: string;
+  media: MediaItem[];
   pricePerSeat: number;
   seatsLeft: number;
   totalSeats: number;
