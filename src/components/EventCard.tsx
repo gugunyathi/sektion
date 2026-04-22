@@ -1,30 +1,61 @@
-import { Event } from "@/data/events";
+import { Event, MediaItem } from "@/data/events";
 import { VibeTag } from "./VibeTag";
 import { SharersSheet } from "./SharersSheet";
+import { MediaCarousel } from "./MediaCarousel";
 import { Bookmark, Heart, MapPin, MessageCircle, Send, Users, Zap } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useInventory } from "@/context/InventoryContext";
+import { toast } from "sonner";
 
 export const EventCard = ({ event, onOpen }: { event: Event; onOpen: (e: Event) => void }) => {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [sharersOpen, setSharersOpen] = useState(false);
+  const [media, setMedia] = useState<MediaItem[]>(event.media ?? []);
+  const [active, setActive] = useState(false);
+  const articleRef = useRef<HTMLElement>(null);
   const { seatsLeftForEvent } = useInventory();
   const seatsLeft = seatsLeftForEvent(event.id);
 
+  // Mock: pretend the current user hosts a couple of events so upload/remove controls show
+  const isHost = event.id === "e1" || event.id === "e3";
+
+  useEffect(() => {
+    const el = articleRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setActive(entry.intersectionRatio > 0.6),
+      { threshold: [0, 0.6, 1] },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  const handleAdd = () => {
+    const id = `${event.id}-u${Date.now()}`;
+    setMedia((m) => [
+      ...m,
+      { id, kind: "image", src: event.image, caption: "New upload", uploadedBy: "you", status: "approved", flags: 0 },
+    ]);
+    toast.success("Media uploaded.");
+  };
+  const handleRemove = (id: string) => setMedia((m) => m.filter((x) => x.id !== id));
+  const handleFlag = (id: string) =>
+    setMedia((m) => m.map((x) => (x.id === id ? { ...x, status: "frozen", flags: x.flags + 1 } : x)));
+
   return (
-    <article className="snap-item relative h-[100dvh] w-full overflow-hidden">
-      <img
-        src={event.image}
-        alt={event.title}
-        className="absolute inset-0 h-full w-full object-cover"
-        loading="lazy"
-        width={832}
-        height={1472}
+    <article ref={articleRef} className="snap-item relative h-[100dvh] w-full overflow-hidden">
+      <MediaCarousel
+        media={media}
+        active={active}
+        isHost={isHost}
+        onAdd={handleAdd}
+        onRemove={handleRemove}
+        onFlag={handleFlag}
       />
-      <div className="absolute inset-0 bg-gradient-overlay" />
-      <div className="bg-gradient-radial absolute inset-x-0 top-0 h-1/2 opacity-60" />
+      <div className="absolute inset-0 bg-gradient-overlay pointer-events-none" />
+      <div className="bg-gradient-radial absolute inset-x-0 top-0 h-1/2 opacity-60 pointer-events-none" />
 
       {/* Top meta */}
       <header className="absolute inset-x-0 top-0 flex items-start justify-between p-5 pt-[max(1.25rem,env(safe-area-inset-top))]">
