@@ -1,5 +1,6 @@
 import { Event } from "@/data/events";
 import { VibeTag } from "./VibeTag";
+import { SharersSheet } from "./SharersSheet";
 import { Bookmark, Heart, MapPin, MessageCircle, Send, Users, Zap } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -8,6 +9,7 @@ import { useInventory } from "@/context/InventoryContext";
 export const EventCard = ({ event, onOpen }: { event: Event; onOpen: (e: Event) => void }) => {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [sharersOpen, setSharersOpen] = useState(false);
   const { seatsLeftForEvent } = useInventory();
   const seatsLeft = seatsLeftForEvent(event.id);
 
@@ -99,8 +101,12 @@ export const EventCard = ({ event, onOpen }: { event: Event; onOpen: (e: Event) 
           {event.date} · {event.time}
         </p>
 
-        {/* Sharers strip */}
-        <div className="mt-4 flex items-center gap-3">
+        {/* Sharers strip — tap to view profiles */}
+        <button
+          onClick={() => setSharersOpen(true)}
+          className="mt-4 flex items-center gap-3 rounded-full bg-background/30 backdrop-blur-md px-2 py-1.5 pr-3 active:scale-[0.98] transition-transform"
+          aria-label="View sharers"
+        >
           <div className="flex -space-x-3">
             {event.sharers.slice(0, 4).map((s) => (
               <img
@@ -114,14 +120,14 @@ export const EventCard = ({ event, onOpen }: { event: Event; onOpen: (e: Event) 
               />
             ))}
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-foreground/80">
+          <div className="flex items-center gap-1.5 text-xs text-foreground/90">
             <Users className="h-3.5 w-3.5" />
             <span className={cn("font-semibold", seatsLeft === 0 ? "text-destructive" : "text-secondary")}>
               {seatsLeft}
             </span>
-            <span>of {event.totalSeats} seats left</span>
+            <span>of {event.totalSeats} · view all</span>
           </div>
-        </div>
+        </button>
 
         {/* CTA */}
         <button
@@ -135,6 +141,13 @@ export const EventCard = ({ event, onOpen }: { event: Event; onOpen: (e: Event) 
           </span>
         </button>
       </div>
+
+      <SharersSheet
+        sharers={event.sharers}
+        open={sharersOpen}
+        onOpenChange={setSharersOpen}
+        title={`${event.title} · sharers`}
+      />
     </article>
   );
 };

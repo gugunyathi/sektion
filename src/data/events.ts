@@ -10,12 +10,19 @@ import a4 from "@/assets/avatar-4.jpg";
 
 export type Vibe = "Party Animal" | "Foodie" | "Chill" | "Luxe" | "Themed";
 
+export type Gender = "female" | "male" | "non-binary";
+export type Relationship = "single" | "couple" | "taken" | "open";
+
 export type Sharer = {
   id: string;
   name: string;
   avatar: string;
   vibe: Vibe;
   verified?: boolean;
+  age: number;
+  gender: Gender;
+  relationship: Relationship;
+  bio?: string;
 };
 
 export type Event = {
@@ -40,10 +47,48 @@ export type Event = {
 export const ALL_VIBES: Vibe[] = ["Party Animal", "Foodie", "Chill", "Luxe", "Themed"];
 
 export const SHARERS: Sharer[] = [
-  { id: "u1", name: "Zara K.", avatar: a2, vibe: "Party Animal", verified: true },
-  { id: "u2", name: "Diego M.", avatar: a3, vibe: "Chill" },
-  { id: "u3", name: "Niko R.", avatar: a1, vibe: "Foodie", verified: true },
-  { id: "u4", name: "Mira L.", avatar: a4, vibe: "Luxe" },
+  {
+    id: "u1",
+    name: "Zara K.",
+    avatar: a2,
+    vibe: "Party Animal",
+    verified: true,
+    age: 24,
+    gender: "female",
+    relationship: "single",
+    bio: "Berlin techno, mezcal, and bad decisions in good company.",
+  },
+  {
+    id: "u2",
+    name: "Diego M.",
+    avatar: a3,
+    vibe: "Chill",
+    age: 29,
+    gender: "male",
+    relationship: "open",
+    bio: "Slow dinners, vinyl, and rooftops at 2am.",
+  },
+  {
+    id: "u3",
+    name: "Niko R.",
+    avatar: a1,
+    vibe: "Foodie",
+    verified: true,
+    age: 33,
+    gender: "non-binary",
+    relationship: "single",
+    bio: "Foodie by day, party legend by night. Negroni enthusiast.",
+  },
+  {
+    id: "u4",
+    name: "Mira L.",
+    avatar: a4,
+    vibe: "Luxe",
+    age: 27,
+    gender: "female",
+    relationship: "couple",
+    bio: "Champagne, masquerades, and ice-cold martinis.",
+  },
 ];
 
 export const EVENTS: Event[] = [
