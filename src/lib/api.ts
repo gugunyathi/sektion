@@ -1,6 +1,7 @@
 // Frontend API client — wraps fetch with auth, refresh, and base URL
+// Use relative paths to avoid mixed content issues; always calls current origin
 
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+const BASE = import.meta.env.DEV ? (import.meta.env.VITE_API_URL ?? 'http://localhost:3000') : '';
 
 const TOKENS_KEY = 'sektion.tokens.v1';
 
