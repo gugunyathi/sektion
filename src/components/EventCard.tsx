@@ -58,7 +58,7 @@ export const EventCard = ({ event, onOpen }: { event: Event; onOpen: (e: Event) 
       <div className="bg-gradient-radial absolute inset-x-0 top-0 h-1/2 opacity-60 pointer-events-none" />
 
       {/* Top meta */}
-      <header className="absolute inset-x-0 top-0 flex items-start justify-between p-5 pt-[max(1.25rem,env(safe-area-inset-top))]">
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between p-5 pt-[max(1.25rem,env(safe-area-inset-top))]">
         <div className="flex items-center gap-2">
           {event.trending && (
             <span className="bg-secondary/95 text-secondary-foreground animate-pulse-neon flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider">
