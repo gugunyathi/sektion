@@ -3,19 +3,25 @@ import { ALL_VIBES, EVENTS, Event, Vibe } from "@/data/events";
 import { VibeTag } from "../VibeTag";
 import { BookingFlow } from "../BookingFlow";
 import { useInventory } from "@/context/InventoryContext";
-import { Bookmark, Search, Users } from "lucide-react";
+import { Bookmark, CalendarDays, Loader2, MapPin, Search, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useBookmarks } from "@/context/BookmarksContext";
+import { useLocation } from "@/hooks/useLocation";
 
 export const DiscoverScreen = () => {
   const [query, setQuery] = useState("");
   const [activeVibes, setActiveVibes] = useState<Vibe[]>([]);
+  const [selectedDate, setSelectedDate] = useState("");
   const [selected, setSelected] = useState<Event | null>(null);
   const [open, setOpen] = useState(false);
   const { seatsLeftForEvent } = useInventory();
 
-  const { isAuthed, requireAuth } = useAuth();
+  const { isAuthed, requireAuth, user } = useAuth();
   const { isBookmarked, toggleBookmark } = useBookmarks();
+  const loc = useLocation();
+
+  // Effective preferred city from profile or geolocation
+  const preferredCity = user?.city || loc.city || null;
 
   const toggle = (v: Vibe) =>
     setActiveVibes((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]));
@@ -39,20 +45,41 @@ export const DiscoverScreen = () => {
   };
 
   const filtered = useMemo(() => {
-    return EVENTS.filter((e) => {
-      const q = query.toLowerCase();
-      const matchQ = !q || e.title.toLowerCase().includes(q) || e.venue.toLowerCase().includes(q) || e.city.toLowerCase().includes(q);
-      const matchV = activeVibes.length === 0 || activeVibes.some((v) => e.vibes.includes(v));
-      return matchQ && matchV;
-    });
-  }, [query, activeVibes]);
+    return EVENTS
+      .filter((e) => {
+        const q = query.toLowerCase();
+        const matchQ = !q || e.title.toLowerCase().includes(q) || e.venue.toLowerCase().includes(q) || e.city.toLowerCase().includes(q);
+        const matchV = activeVibes.length === 0 || activeVibes.some((v) => e.vibes.includes(v));
+        const matchD = !selectedDate || e.dateISO === selectedDate;
+        return matchQ && matchV && matchD;
+      })
+      .sort((a, b) => {
+        // Boost events in user's preferred city to top
+        if (!preferredCity) return 0;
+        const aMatch = a.city.toLowerCase().includes(preferredCity.toLowerCase()) ? -1 : 0;
+        const bMatch = b.city.toLowerCase().includes(preferredCity.toLowerCase()) ? -1 : 0;
+        return aMatch - bMatch;
+      });
+  }, [query, activeVibes, selectedDate, preferredCity]);
 
   return (
     <div className="min-h-[100dvh] pb-28">
       <header className="bg-background/80 sticky top-0 z-20 px-5 pb-3 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-xl">
         <h1 className="font-display text-2xl font-black tracking-tight">Discover</h1>
-        <p className="text-muted-foreground text-sm">Find your tribe tonight.</p>
-        <div className="bg-muted/60 border-border mt-4 flex items-center gap-2 rounded-2xl border px-4 py-3">
+        <div className="flex items-center justify-between">
+          <p className="text-muted-foreground text-sm">Find your tribe tonight.</p>
+          {/* Location pill */}
+          <button
+            onClick={loc.detect}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {loc.loading
+              ? <Loader2 className="h-3 w-3 animate-spin" />
+              : <MapPin className="h-3 w-3 text-secondary" />}
+            <span>{preferredCity ?? "Detect location"}</span>
+          </button>
+        </div>
+        <div className="bg-muted/60 border-border mt-3 flex items-center gap-2 rounded-2xl border px-4 py-3">
           <Search className="text-muted-foreground h-4 w-4" />
           <input
             value={query}
@@ -74,6 +101,28 @@ export const DiscoverScreen = () => {
               </button>
             );
           })}
+        </div>
+        {/* Date filter */}
+        <div className="mt-2 flex items-center gap-2">
+          <div className="flex items-center gap-1.5 glass rounded-full px-3 py-1.5 text-xs font-semibold">
+            <CalendarDays className="h-3 w-3 text-secondary shrink-0" />
+            <input
+              type="date"
+              value={selectedDate}
+              min={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="bg-transparent outline-none text-xs text-foreground/80 w-28"
+            />
+            {selectedDate && (
+              <button onClick={() => setSelectedDate("")} className="text-muted-foreground hover:text-foreground">
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+          <span className="text-[11px] text-muted-foreground">
+            {filtered.length} {filtered.length === 1 ? "event" : "events"}
+            {preferredCity && !query && !selectedDate && activeVibes.length === 0 && ` near ${preferredCity}`}
+          </span>
         </div>
       </header>
 

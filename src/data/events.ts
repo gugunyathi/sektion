@@ -45,6 +45,8 @@ export type Event = {
   venue: string;
   city: string;
   date: string;
+  /** ISO date string YYYY-MM-DD for filtering */
+  dateISO: string;
   time: string;
   category: "Club" | "Dining" | "Lounge" | "Rave" | "Themed";
   vibes: Vibe[];
@@ -133,6 +135,7 @@ export const EVENTS: Event[] = [
     venue: "Club Mirage",
     city: "Berlin",
     date: "Sat 26 Apr",
+    dateISO: "2026-04-26",
     time: "23:00",
     category: "Club",
     vibes: ["Party Animal", "Luxe"],
@@ -151,6 +154,7 @@ export const EVENTS: Event[] = [
     venue: "Aurora Rooftop",
     city: "Tokyo",
     date: "Fri 25 Apr",
+    dateISO: "2026-04-25",
     time: "20:30",
     category: "Dining",
     vibes: ["Foodie", "Luxe"],
@@ -167,6 +171,7 @@ export const EVENTS: Event[] = [
     venue: "Bunker 9",
     city: "London",
     date: "Sat 26 Apr",
+    dateISO: "2026-04-26",
     time: "00:00",
     category: "Rave",
     vibes: ["Party Animal"],
@@ -184,6 +189,7 @@ export const EVENTS: Event[] = [
     venue: "Emerald Speakeasy",
     city: "New York",
     date: "Thu 24 Apr",
+    dateISO: "2026-04-24",
     time: "21:00",
     category: "Lounge",
     vibes: ["Chill", "Luxe"],
@@ -200,6 +206,7 @@ export const EVENTS: Event[] = [
     venue: "Palais Rose",
     city: "Paris",
     date: "Sat 26 Apr",
+    dateISO: "2026-04-26",
     time: "22:00",
     category: "Themed",
     vibes: ["Themed", "Party Animal"],

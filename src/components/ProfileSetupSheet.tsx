@@ -1,16 +1,12 @@
 import { useState } from "react";
-import { ArrowLeft, AtSign, Check, MapPin, Pencil } from "lucide-react";
+import { ArrowLeft, AtSign, Check, Loader2, MapPin, Pencil } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useAuth } from "@/context/AuthContext";
+import { useLocation } from "@/hooks/useLocation";
 
 const ALL_VIBES = [
   "Foodie", "Party Animal", "Luxe", "Chill", "Socialite",
   "Night Owl", "Trendsetter", "Sports Fan", "Music Head", "Art Lover",
-];
-
-const CITIES = [
-  "London", "Berlin", "Paris", "Amsterdam", "Barcelona",
-  "Milan", "Ibiza", "Dubai", "New York", "Lagos",
 ];
 
 export function ProfileSetupSheet({
@@ -27,6 +23,7 @@ export function ProfileSetupSheet({
   const [displayName, setDisplayName] = useState(user?.displayName ?? "");
   const [bio, setBio] = useState(user?.bio ?? "");
   const [city, setCity] = useState(user?.city ?? "");
+  const loc = useLocation();
   const [selectedVibes, setSelectedVibes] = useState<string[]>(user?.vibes ?? []);
   const [usernameError, setUsernameError] = useState<string | null>(null);
 
@@ -140,23 +137,37 @@ export function ProfileSetupSheet({
               {/* City */}
               <div>
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
-                  City
+                  Preferred city
                 </label>
-                <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
-                  {CITIES.map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => setCity(c === city ? "" : c)}
-                      className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
-                        city === c
-                          ? "bg-accent text-accent-foreground"
-                          : "bg-muted/50 border border-border text-muted-foreground"
-                      }`}
-                    >
-                      <MapPin className="h-3 w-3" /> {c}
-                    </button>
-                  ))}
+                <div className="flex items-center gap-2 bg-muted/50 border border-border rounded-2xl px-4 py-3">
+                  <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <input
+                    type="text"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="e.g. London, Berlin, Lagos…"
+                    className="flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-muted-foreground"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { loc.detect(); }}
+                    title="Detect my city"
+                    className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {loc.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                  </button>
                 </div>
+                {loc.city && loc.city !== city && (
+                  <button
+                    onClick={() => setCity(loc.city!)}
+                    className="mt-1.5 text-[11px] text-accent font-semibold px-1"
+                  >
+                    Use detected: {loc.city}
+                  </button>
+                )}
+                {loc.error && (
+                  <p className="text-[11px] text-muted-foreground mt-1 px-1">{loc.error}</p>
+                )}
               </div>
 
               {/* Bio */}
