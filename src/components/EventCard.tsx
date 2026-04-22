@@ -1,5 +1,6 @@
 import { Event } from "@/data/events";
 import { VibeTag } from "./VibeTag";
+import { SharersSheet } from "./SharersSheet";
 import { Bookmark, Heart, MapPin, MessageCircle, Send, Users, Zap } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -8,6 +9,7 @@ import { useInventory } from "@/context/InventoryContext";
 export const EventCard = ({ event, onOpen }: { event: Event; onOpen: (e: Event) => void }) => {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [sharersOpen, setSharersOpen] = useState(false);
   const { seatsLeftForEvent } = useInventory();
   const seatsLeft = seatsLeftForEvent(event.id);
 
