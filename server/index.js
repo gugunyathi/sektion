@@ -22,14 +22,12 @@ const eventRoutes = require('./routes/events');
 const uploadRoutes = require('./routes/uploads');
 const adminRoutes = require('./routes/admin');
 
-// ── Connect DB ──────────────────────────────────────────
-connectDB();
-
 const app = express();
 
 // ── Security middleware ────────────────────────────────
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }, // allow serving uploads
+  crossOriginOpenerPolicy: false, // must be disabled — Google OAuth popup needs window.closed access
 }));
 app.use(mongoSanitize());          // prevent NoSQL injection
 app.use(compression());
@@ -43,6 +41,17 @@ app.use(cors({
   },
   credentials: true,
 }));
+
+// ── DB connection middleware (runs per-request, safe for serverless) ──
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('DB connection error:', err.message);
+    res.status(503).json({ error: 'Database unavailable' });
+  }
+});
 
 // ── Body parsing ───────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
