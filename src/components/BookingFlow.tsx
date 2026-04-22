@@ -590,23 +590,104 @@ const DoneStep = ({
   guests: number;
   table: Table;
   total: number;
-}) => (
-  <div className="flex flex-col items-center text-center animate-float-up">
-    <div className="bg-gradient-primary shadow-neon mb-6 mt-4 flex h-20 w-20 items-center justify-center rounded-full">
-      <Check className="text-primary-foreground h-10 w-10" strokeWidth={3} />
+}) => {
+  const [sharersOpen, setSharersOpen] = useState(false);
+  const refundable = Math.round(total * 0.9);
+  const fee = total - refundable;
+  return (
+    <div className="flex flex-col items-center text-center animate-float-up">
+      <div className="bg-gradient-primary shadow-neon mb-6 mt-4 flex h-20 w-20 items-center justify-center rounded-full">
+        <Check className="text-primary-foreground h-10 w-10" strokeWidth={3} />
+      </div>
+      <h2 className="font-display text-3xl font-black leading-tight">You're in.</h2>
+      <p className="text-muted-foreground mt-2 max-w-xs text-sm">
+        {table.label} at {event.venue}. We've messaged the other sharers.
+      </p>
+
+      <div className="bg-muted/40 mt-6 w-full space-y-3 rounded-2xl p-4 text-left">
+        <div className="flex items-center gap-1.5">
+          <TableTypeBadge type={table.tableType} long />
+        </div>
+        <Row label="When" value={`${event.date} · ${event.time}`} />
+        <Row label="Where" value={`${event.venue}, ${event.city}`} />
+        <Row label="Guests" value={String(guests)} />
+        <Divider />
+        <Row label="Paid" value={`$${total}`} bold />
+      </div>
+
+      {/* Escrow panel */}
+      <div className="mt-4 w-full overflow-hidden rounded-2xl border border-accent/30 bg-accent/5 p-4 text-left">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="text-accent h-4 w-4" />
+          <p className="text-[10px] font-bold uppercase tracking-wider text-accent">
+            Held in escrow
+          </p>
+        </div>
+        <p className="mt-2 text-xs leading-relaxed text-foreground/85">
+          Your <span className="font-semibold">${total}</span> is held safely. Funds release to
+          venue & sharers only once everyone shows up.
+        </p>
+        <div className="mt-3 space-y-2 rounded-xl bg-background/40 p-3 text-[11px]">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Cancel 24h+ before</span>
+            <span className="text-secondary font-semibold">${refundable} refund</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">10% platform fee withheld</span>
+            <span className="text-foreground/80">${fee}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Event cancelled by host</span>
+            <span className="text-secondary font-semibold">100% pro-rata refund</span>
+          </div>
+        </div>
+        {table.seeking?.payer === "host" && table.seeking.billBudget && (
+          <p className="mt-3 flex items-start gap-2 rounded-xl border border-secondary/30 bg-secondary/5 p-2.5 text-[11px] leading-snug">
+            <Crown className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              Host-pays table — your{" "}
+              <span className="font-semibold">${table.seeking.billBudget}</span> covers the full
+              bill. Refunded pro-rata if cancelled in time.
+            </span>
+          </p>
+        )}
+      </div>
+
+      {/* Sharers preview */}
+      <button
+        onClick={() => setSharersOpen(true)}
+        className="border-border bg-muted/30 hover:border-primary/40 mt-4 flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition-colors"
+      >
+        <div className="flex -space-x-2">
+          {event.sharers.slice(0, 4).map((s) => (
+            <img
+              key={s.id}
+              src={s.avatar}
+              alt={s.name}
+              className="border-card h-8 w-8 rounded-full border-2 object-cover"
+              loading="lazy"
+              width={64}
+              height={64}
+            />
+          ))}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">Meet your sharers</p>
+          <p className="text-muted-foreground text-[11px]">
+            Tap to view all {event.sharers.length} profiles
+          </p>
+        </div>
+      </button>
+
+      <SharersSheet
+        sharers={event.sharers}
+        open={sharersOpen}
+        onOpenChange={setSharersOpen}
+        title={table.label}
+      />
     </div>
-    <h2 className="font-display text-3xl font-black leading-tight">You're in.</h2>
-    <p className="text-muted-foreground mt-2 max-w-xs text-sm">
-      {table.label} at {event.venue}. We've messaged the other sharers.
-    </p>
-    <div className="bg-muted/40 mt-6 w-full space-y-3 rounded-2xl p-4 text-left">
-      <Row label="When" value={`${event.date} · ${event.time}`} />
-      <Row label="Where" value={`${event.venue}, ${event.city}`} />
-      <Row label="Guests" value={String(guests)} />
-      <Row label="Paid" value={`$${total}`} bold />
-    </div>
-  </div>
-);
+  );
+};
 
 /* ---------- Bits ---------- */
 const Row = ({ label, value, bold }: { label: string; value: string; bold?: boolean }) => (
