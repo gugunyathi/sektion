@@ -160,9 +160,9 @@ export const EventCard = ({ event, onOpen }: { event: Event; onOpen: (e: Event) 
 
       {/* Action rail — raised so bookmark clears the CTA button */}
       <aside className="absolute bottom-52 right-4 z-10 flex flex-col items-center gap-5">
-        {/* Upload / delete media controls (host only) */}
+        {/* Upload / delete media controls (host only) — horizontal pair */}
         {isHost && (
-          <>
+          <div className="flex items-center gap-2">
             <button
               onClick={handleAdd}
               className="flex flex-col items-center gap-1"
@@ -183,7 +183,7 @@ export const EventCard = ({ event, onOpen }: { event: Event; onOpen: (e: Event) 
                 </span>
               </button>
             )}
-          </>
+          </div>
         )}
         <button
           onClick={() => setLiked((v) => !v)}
