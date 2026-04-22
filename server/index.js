@@ -1,4 +1,7 @@
-require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+// Load .env only in local dev — Vercel injects env vars directly, dotenv is a no-op there
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+}
 require('express-async-errors');
 
 const express = require('express');
