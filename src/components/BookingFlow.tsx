@@ -285,120 +285,185 @@ const GuestsStep = ({
 
 /* ---------- Step 2: Tables ---------- */
 const TablesStep = ({
-  eventId,
+  event,
   tables,
   guests,
   tableId,
   onSelect,
 }: {
-  eventId: string;
+  event: Event;
   tables: Table[];
   guests: number;
   tableId: string | null;
   onSelect: (id: string) => void;
 }) => {
   const { seatsLeftForTable } = useInventory();
+  const [typeFilters, setTypeFilters] = useState<TableType[]>([]);
+
+  const toggle = (t: TableType) =>
+    setTypeFilters((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]));
+
+  const visible = typeFilters.length
+    ? tables.filter((t) => typeFilters.includes(t.tableType))
+    : tables;
+
   return (
-  <div className="space-y-4 animate-float-up">
-    <div>
-      <h2 className="font-display text-2xl font-black leading-tight">Pick your table</h2>
-      <p className="text-muted-foreground mt-1 text-sm">
-        Live availability — locked the moment you confirm.
-      </p>
-    </div>
-    {tables.map((t) => {
-      const free = seatsLeftForTable(eventId, t.id);
-      const fits = free >= guests;
-      const active = tableId === t.id;
-      const lockedOut = !fits;
-      return (
-        <button
-          key={t.id}
-          onClick={() => fits && onSelect(t.id)}
-          disabled={lockedOut}
-          aria-disabled={lockedOut}
-          className={cn(
-            "relative block w-full overflow-hidden rounded-2xl border p-4 text-left transition-all",
-            active
-              ? "border-primary bg-primary/10 shadow-neon"
-              : fits
-                ? "border-border bg-muted/40 hover:border-primary/40"
-                : "border-destructive/30 bg-destructive/5 cursor-not-allowed",
-          )}
-        >
-          {lockedOut && (
-            <>
-              <div
-                aria-hidden
-                className="pointer-events-none absolute inset-0 opacity-[0.07]"
-                style={{
-                  backgroundImage:
-                    "repeating-linear-gradient(45deg, hsl(var(--destructive)) 0 8px, transparent 8px 16px)",
-                }}
+    <div className="space-y-4 animate-float-up">
+      <div>
+        <h2 className="font-display text-2xl font-black leading-tight">Pick your table</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Filter by who you want to share with — live availability shown.
+        </p>
+      </div>
+
+      <div className="no-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5 pb-1">
+        {ALL_TABLE_TYPES.map((tt) => {
+          const active = typeFilters.includes(tt);
+          return (
+            <button
+              key={tt}
+              onClick={() => toggle(tt)}
+              className={cn("shrink-0 transition-transform", active ? "scale-105" : "opacity-70")}
+            >
+              <TableTypeBadge
+                type={tt}
+                long
+                className={active ? "ring-2 ring-foreground/40" : ""}
               />
-              <span className="bg-destructive/15 text-destructive absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
-                <Lock className="h-3 w-3" />
-                {free === 0 ? "Full" : `Needs ${guests}`}
-              </span>
-            </>
-          )}
-          <div className={cn("flex items-start justify-between gap-3 relative", lockedOut && "opacity-60")}>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <p className="font-display text-base font-bold">{t.label}</p>
-                {active && (
-                  <span className="bg-primary text-primary-foreground flex h-5 w-5 items-center justify-center rounded-full">
-                    <Check className="h-3 w-3" strokeWidth={3} />
-                  </span>
-                )}
-              </div>
-              <p className="text-muted-foreground mt-0.5 text-xs">{t.vibe}</p>
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {t.perks.map((p) => (
-                  <span
-                    key={p}
-                    className="bg-background/60 border-border rounded-full border px-2 py-0.5 text-[10px] font-medium"
-                  >
-                    {p}
-                  </span>
-                ))}
-              </div>
-              {t.hostedBy && (
-                <div className="mt-3 flex items-center gap-2">
-                  <img
-                    src={t.hostedBy.avatar}
-                    alt=""
-                    className="h-6 w-6 rounded-full object-cover"
-                    loading="lazy"
-                    width={48}
-                    height={48}
-                  />
-                  <span className="text-xs text-foreground/80">
-                    Hosted by <span className="font-semibold">{t.hostedBy.name}</span>
-                  </span>
-                  {t.hostedBy.verified && <BadgeCheck className="text-accent h-3.5 w-3.5" />}
-                </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {visible.map((t) => {
+        const free = seatsLeftForTable(event.id, t.id);
+        const fits = free >= guests;
+        const active = tableId === t.id;
+        const lockedOut = !fits;
+        const meta = TABLE_TYPE_META[t.tableType];
+        return (
+          <button
+            key={t.id}
+            onClick={() => fits && onSelect(t.id)}
+            disabled={lockedOut}
+            aria-disabled={lockedOut}
+            className={cn(
+              "relative block w-full overflow-hidden rounded-2xl border p-4 text-left transition-all",
+              active
+                ? "border-primary bg-primary/10 shadow-neon"
+                : fits
+                  ? "border-border bg-muted/40 hover:border-primary/40"
+                  : "border-destructive/30 bg-destructive/5 cursor-not-allowed",
+            )}
+          >
+            {lockedOut && (
+              <>
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 opacity-[0.07]"
+                  style={{
+                    backgroundImage:
+                      "repeating-linear-gradient(45deg, hsl(var(--destructive)) 0 8px, transparent 8px 16px)",
+                  }}
+                />
+                <span className="bg-destructive/15 text-destructive absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+                  <Lock className="h-3 w-3" />
+                  {free === 0 ? "Full" : `Needs ${guests}`}
+                </span>
+              </>
+            )}
+            <div
+              className={cn(
+                "relative flex items-start justify-between gap-3",
+                lockedOut && "opacity-60",
               )}
-            </div>
-            <div className="text-right">
-              <div
-                className={cn(
-                  "flex items-center justify-end gap-1 text-xs font-semibold",
-                  fits ? "text-secondary" : "text-destructive",
+            >
+              <div className="min-w-0 flex-1">
+                <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                  <TableTypeBadge type={t.tableType} />
+                  {active && (
+                    <span className="bg-primary text-primary-foreground flex h-5 w-5 items-center justify-center rounded-full">
+                      <Check className="h-3 w-3" strokeWidth={3} />
+                    </span>
+                  )}
+                </div>
+                <p className="font-display text-base font-bold">{t.label}</p>
+                <p className="text-muted-foreground mt-0.5 text-xs">{t.vibe}</p>
+
+                {t.seeking?.pitch && (
+                  <p className="mt-2 rounded-lg border border-foreground/10 bg-background/40 px-2.5 py-1.5 text-[11px] leading-snug text-foreground/85">
+                    <span className="font-semibold">Seeking:</span> {t.seeking.pitch}
+                    {t.seeking.billBudget && (
+                      <span className="text-secondary ml-1 font-semibold">
+                        · ${t.seeking.billBudget} budget
+                      </span>
+                    )}
+                  </p>
                 )}
-              >
-                <Users className="h-3 w-3" />
-                {free}/{t.capacity}
+
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {t.perks.map((p) => (
+                    <span
+                      key={p}
+                      className="bg-background/60 border-border rounded-full border px-2 py-0.5 text-[10px] font-medium"
+                    >
+                      {p}
+                    </span>
+                  ))}
+                </div>
+                {t.hostedBy && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <img
+                      src={t.hostedBy.avatar}
+                      alt=""
+                      className="h-6 w-6 rounded-full object-cover"
+                      loading="lazy"
+                      width={48}
+                      height={48}
+                    />
+                    <span className="text-xs text-foreground/80">
+                      Hosted by <span className="font-semibold">{t.hostedBy.name}</span>
+                      <span className="text-muted-foreground">
+                        {" "}
+                        · {t.hostedBy.age}{" "}
+                        {t.hostedBy.gender === "female"
+                          ? "F"
+                          : t.hostedBy.gender === "male"
+                            ? "M"
+                            : "NB"}
+                      </span>
+                    </span>
+                    {t.hostedBy.verified && <BadgeCheck className="text-accent h-3.5 w-3.5" />}
+                  </div>
+                )}
               </div>
-              <p className="text-muted-foreground mt-0.5 text-[10px] uppercase tracking-wider">
-                seats free
-              </p>
+              <div className="text-right">
+                <div
+                  className={cn(
+                    "flex items-center justify-end gap-1 text-xs font-semibold",
+                    fits ? "text-secondary" : "text-destructive",
+                  )}
+                >
+                  <Users className="h-3 w-3" />
+                  {free}/{t.capacity}
+                </div>
+                <p className="text-muted-foreground mt-0.5 text-[10px] uppercase tracking-wider">
+                  seats free
+                </p>
+                <p className="text-muted-foreground/70 mt-1 text-[9px] uppercase tracking-wider">
+                  {meta.short}
+                </p>
+              </div>
             </div>
-          </div>
-        </button>
-      );
-    })}
-  </div>
+          </button>
+        );
+      })}
+      {visible.length === 0 && (
+        <p className="text-muted-foreground py-6 text-center text-sm">
+          No tables match those filters — try clearing one.
+        </p>
+      )}
+    </div>
   );
 };
 
