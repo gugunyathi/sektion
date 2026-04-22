@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Event } from "@/data/events";
-import { getTablesForEvent, Table } from "@/data/tables";
+import {
+  ALL_TABLE_TYPES,
+  getTablesForEvent,
+  Table,
+  TABLE_TYPE_META,
+  TableType,
+} from "@/data/tables";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { VibeTag } from "./VibeTag";
+import { TableTypeBadge } from "./TableTypeBadge";
+import { SharersSheet } from "./SharersSheet";
 import { useBooking, useCountdown } from "@/context/BookingContext";
 import { useInventory } from "@/context/InventoryContext";
 import {
@@ -11,10 +19,12 @@ import {
   Check,
   Clock,
   CreditCard,
+  Crown,
   Lock,
   Minus,
   Plus,
   Shield,
+  ShieldCheck,
   Sparkles,
   Users,
 } from "lucide-react";
