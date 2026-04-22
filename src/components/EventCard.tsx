@@ -141,6 +141,13 @@ export const EventCard = ({ event, onOpen }: { event: Event; onOpen: (e: Event) 
           </span>
         </button>
       </div>
+
+      <SharersSheet
+        sharers={event.sharers}
+        open={sharersOpen}
+        onOpenChange={setSharersOpen}
+        title={`${event.title} · sharers`}
+      />
     </article>
   );
 };
