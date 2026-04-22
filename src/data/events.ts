@@ -115,20 +115,17 @@ const CLUB     = "/club.mp4";       // Subterra: Techno Night
 const VELVET   = "/velvet.mp4";     // The Velvet Hour
 const CABARET  = "/cabaret.mp4";    // Masquerade Affair
 
-// CDN fallback second-slot placeholder
-const V3 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
-
 const mkMedia = (
   eventId: string,
   primary: string,
   alt: string,
   v1: string,
-  v2: string,
 ): MediaItem[] => [
-  { id: `${eventId}-m1`, kind: "video", src: v1, poster: primary, caption: "Venue walkthrough", uploadedBy: "system", status: "approved", flags: 0 },
+  // Primary system video — always approved, plays immediately
+  { id: `${eventId}-m1`, kind: "video", src: v1, poster: primary, caption: "Event highlight", uploadedBy: "system", status: "approved", flags: 0 },
+  // Fallback image slides
   { id: `${eventId}-m2`, kind: "image", src: primary, caption: "Table setting", uploadedBy: "host", status: "approved", flags: 0 },
-  { id: `${eventId}-m3`, kind: "video", src: v2, poster: alt, caption: "Last week's vibe", uploadedBy: "host", status: "pending", flags: 0 },
-  { id: `${eventId}-m4`, kind: "image", src: alt, caption: "Crowd shot", uploadedBy: "guest", status: "frozen", flags: 3 },
+  { id: `${eventId}-m3`, kind: "image", src: alt, caption: "Venue atmosphere", uploadedBy: "host", status: "approved", flags: 0 },
 ];
 
 export const EVENTS: Event[] = [
@@ -223,19 +220,18 @@ export const EVENTS: Event[] = [
   },
 ];
 
-// Attach media to each event (2 videos + 2 images per event)
-// All events now use local system-uploaded videos as the primary slot
-const MEDIA_ASSIGN: Record<string, [string, string]> = {
-  e1: [BIRTHDAY, V3],
-  e2: [SKYLINE,  V3],
-  e3: [CLUB,     V3],
-  e4: [VELVET,   V3],
-  e5: [CABARET,  V3],
+// Attach media to each event: 1 approved system video + 2 approved image slides
+const MEDIA_ASSIGN: Record<string, [string]> = {
+  e1: [BIRTHDAY],
+  e2: [SKYLINE],
+  e3: [CLUB],
+  e4: [VELVET],
+  e5: [CABARET],
 };
 const ALT_IMAGE: Record<string, string> = {
   e1: rave, e2: lounge, e3: club, e4: themed, e5: dining,
 };
 EVENTS.forEach((e) => {
-  const [v1, v2] = MEDIA_ASSIGN[e.id] ?? [V1, V2];
-  e.media = mkMedia(e.id, e.image, ALT_IMAGE[e.id] ?? e.image, v1, v2);
+  const [v1] = MEDIA_ASSIGN[e.id] ?? [V3];
+  e.media = mkMedia(e.id, e.image, ALT_IMAGE[e.id] ?? e.image, v1);
 });

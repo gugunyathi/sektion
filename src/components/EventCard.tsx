@@ -43,11 +43,10 @@ export const EventCard = ({ event, onOpen, initialActive = false }: { event: Eve
   // Mock: pretend the current user hosts a couple of events so upload/remove controls show
   const isHost = event.id === "e1" || event.id === "e3";
 
-  // Get moderation status of media (prioritize worse status)
+  // Moderation status reflects only the currently visible slide
   const getModerationStatus = () => {
-    if (media.some((m) => m.status === "frozen")) return "frozen";
-    if (media.some((m) => m.status === "pending")) return "pending";
-    return "approved";
+    if (!currentMedia) return "approved";
+    return currentMedia.status;
   };
 
   const moderationStatus = getModerationStatus();
