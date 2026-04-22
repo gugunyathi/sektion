@@ -212,3 +212,19 @@ export const EVENTS: Event[] = [
     trending: true,
   },
 ];
+
+// Attach mock media to each event (2 videos + 2 images per event)
+const MEDIA_ASSIGN: Record<string, [string, string]> = {
+  e1: [V1, V3],
+  e2: [V4, V2],
+  e3: [V5, V1],
+  e4: [V2, V3],
+  e5: [V3, V4],
+};
+const ALT_IMAGE: Record<string, string> = {
+  e1: rave, e2: lounge, e3: club, e4: themed, e5: dining,
+};
+EVENTS.forEach((e) => {
+  const [v1, v2] = MEDIA_ASSIGN[e.id] ?? [V1, V2];
+  e.media = mkMedia(e.id, e.image, ALT_IMAGE[e.id] ?? e.image, v1, v2);
+});
