@@ -49,7 +49,7 @@ export type Event = {
   category: "Club" | "Dining" | "Lounge" | "Rave" | "Themed";
   vibes: Vibe[];
   image: string;
-  media: MediaItem[];
+  media?: MediaItem[];
   pricePerSeat: number;
   seatsLeft: number;
   totalSeats: number;
