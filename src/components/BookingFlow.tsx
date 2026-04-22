@@ -145,7 +145,7 @@ export const BookingFlow = ({
           )}
           {step === "tables" && (
             <TablesStep
-              eventId={event.id}
+              event={event}
               tables={tables}
               guests={guests}
               tableId={tableId}
