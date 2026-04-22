@@ -106,6 +106,26 @@ export const SHARERS: Sharer[] = [
   },
 ];
 
+// Mock placeholder media — Google's public sample CDN videos + reused event imagery
+const V1 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+const V2 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4";
+const V3 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
+const V4 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4";
+const V5 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4";
+
+const mkMedia = (
+  eventId: string,
+  primary: string,
+  alt: string,
+  v1: string,
+  v2: string,
+): MediaItem[] => [
+  { id: `${eventId}-m1`, kind: "video", src: v1, poster: primary, caption: "Venue walkthrough", uploadedBy: "host", status: "approved", flags: 0 },
+  { id: `${eventId}-m2`, kind: "image", src: primary, caption: "Table setting", uploadedBy: "host", status: "approved", flags: 0 },
+  { id: `${eventId}-m3`, kind: "video", src: v2, poster: alt, caption: "Last week's vibe", uploadedBy: "host", status: "approved", flags: 0 },
+  { id: `${eventId}-m4`, kind: "image", src: alt, caption: "Crowd shot", uploadedBy: "host", status: "approved", flags: 0 },
+];
+
 export const EVENTS: Event[] = [
   {
     id: "e1",
