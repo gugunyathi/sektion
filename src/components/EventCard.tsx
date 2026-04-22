@@ -159,9 +159,9 @@ export const EventCard = ({ event, onOpen }: { event: Event; onOpen: (e: Event) 
       </header>
 
       {/* Action rail — raised so bookmark clears the CTA button */}
-      <aside className="absolute bottom-52 right-4 z-10 flex flex-col items-center gap-5">
-        {/* Upload / delete media controls (host only) — horizontal pair */}
-        {isHost && (
+      <aside className="absolute bottom-52 right-4 z-10 flex flex-col items-end gap-5">
+        {/* Upload / delete media controls (host only) — horizontal pair, right-aligned */}
+        {isHost && currentMedia && (
           <div className="flex items-center gap-2">
             <button
               onClick={handleAdd}
@@ -172,53 +172,65 @@ export const EventCard = ({ event, onOpen }: { event: Event; onOpen: (e: Event) 
                 <Plus className="h-6 w-6 text-foreground" />
               </span>
             </button>
-            {currentMedia && (
-              <button
-                onClick={() => handleRemove(currentMedia.id)}
-                className="flex flex-col items-center gap-1"
-                aria-label="Remove current media"
-              >
-                <span className="glass flex h-12 w-12 items-center justify-center rounded-full">
-                  <Trash2 className="h-6 w-6 text-foreground" />
-                </span>
-              </button>
-            )}
+            <button
+              onClick={() => handleRemove(currentMedia.id)}
+              className="flex flex-col items-center gap-1"
+              aria-label="Remove current media"
+            >
+              <span className="glass flex h-12 w-12 items-center justify-center rounded-full">
+                <Trash2 className="h-6 w-6 text-foreground" />
+              </span>
+            </button>
           </div>
         )}
-        <button
-          onClick={() => setLiked((v) => !v)}
-          className="flex flex-col items-center gap-1"
-          aria-label="Like"
-        >
-          <span
-            className={cn(
-              "glass flex h-12 w-12 items-center justify-center rounded-full transition-all",
-              liked && "bg-primary/30 border-primary/60 shadow-neon",
-            )}
+        {isHost && !currentMedia && (
+          <button
+            onClick={handleAdd}
+            className="flex flex-col items-center gap-1"
+            aria-label="Upload media"
           >
-            <Heart className={cn("h-6 w-6", liked ? "fill-primary text-primary" : "text-foreground")} />
-          </span>
-          <span className="text-[11px] font-semibold text-foreground/90 drop-shadow">
-            {(liked ? 1 : 0) + 234}
-          </span>
+            <span className="glass flex h-12 w-12 items-center justify-center rounded-full">
+              <Plus className="h-6 w-6 text-foreground" />
+            </span>
+          </button>
+        )}
+        {/* Social engagement icons — center aligned */}
+        <div className="flex flex-col items-center gap-5">
+          <button
+            onClick={() => setLiked((v) => !v)}
+            className="flex flex-col items-center gap-1"
+            aria-label="Like"
+          >
+            <span
+              className={cn(
+                "glass flex h-12 w-12 items-center justify-center rounded-full transition-all",
+                liked && "bg-primary/30 border-primary/60 shadow-neon",
+              )}
+            >
+              <Heart className={cn("h-6 w-6", liked ? "fill-primary text-primary" : "text-foreground")} />
+            </span>
+            <span className="text-[11px] font-semibold text-foreground/90 drop-shadow">
+              {(liked ? 1 : 0) + 234}
+            </span>
+          </button>
+          <button className="flex flex-col items-center gap-1" aria-label="Comments">
+            <span className="glass flex h-12 w-12 items-center justify-center rounded-full">
+              <MessageCircle className="h-6 w-6 text-foreground" />
+            </span>
+            <span className="text-[11px] font-semibold text-foreground/90 drop-shadow">42</span>
+          </button>
+          <button className="flex flex-col items-center gap-1" aria-label="Share">
+            <span className="glass flex h-12 w-12 items-center justify-center rounded-full">
+              <Send className="h-6 w-6 text-foreground" />
+            </span>
+            <span className="text-[11px] font-semibold text-foreground/90 drop-shadow">18</span>
+          </button>
+          <button onClick={() => setSaved((v) => !v)} aria-label="Save" className="flex flex-col items-center">
+            <span className="glass flex h-12 w-12 items-center justify-center rounded-full">
+              <Bookmark className={cn("h-6 w-6", saved ? "fill-secondary text-secondary" : "text-foreground")} />
+            </span>
         </button>
-        <button className="flex flex-col items-center gap-1" aria-label="Comments">
-          <span className="glass flex h-12 w-12 items-center justify-center rounded-full">
-            <MessageCircle className="h-6 w-6 text-foreground" />
-          </span>
-          <span className="text-[11px] font-semibold text-foreground/90 drop-shadow">42</span>
-        </button>
-        <button className="flex flex-col items-center gap-1" aria-label="Share">
-          <span className="glass flex h-12 w-12 items-center justify-center rounded-full">
-            <Send className="h-6 w-6 text-foreground" />
-          </span>
-          <span className="text-[11px] font-semibold text-foreground/90 drop-shadow">18</span>
-        </button>
-        <button onClick={() => setSaved((v) => !v)} aria-label="Save" className="flex flex-col items-center">
-          <span className="glass flex h-12 w-12 items-center justify-center rounded-full">
-            <Bookmark className={cn("h-6 w-6", saved ? "fill-secondary text-secondary" : "text-foreground")} />
-          </span>
-        </button>
+        </div>
       </aside>
 
       {/* Included items strip — sits below badge row which itself is below the Sektion header */}
