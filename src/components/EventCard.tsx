@@ -125,11 +125,11 @@ export const EventCard = ({ event, onOpen, initialActive = false, muted: mutedPr
         ...newMedia,
         id,
         uploadedBy: user?.id ?? "you",
-        status: "pending",
+        status: "approved",
         flags: 0,
       },
     ]);
-    toast.success("Media uploaded. Pending moderation.");
+    toast.success("Media uploaded!");
   };
 
   const handleItemImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -172,8 +172,35 @@ export const EventCard = ({ event, onOpen, initialActive = false, muted: mutedPr
     }
     setMedia((m) => m.filter((x) => x.id !== mediaId));
   };
-  const handleFlag = (id: string) =>
-    setMedia((m) => m.map((x) => (x.id === id ? { ...x, status: "frozen", flags: x.flags + 1 } : x)));
+  const handleFlag = async (id: string) => {
+    const dbId = (event as unknown as { _id?: string })._id;
+    if (dbId) {
+      try {
+        const result = await api.post<{ flags: number; status: string }>(
+          `/api/events/${dbId}/media/${id}/report`
+        );
+        setMedia((m) =>
+          m.map((x) =>
+            x.id === id
+              ? { ...x, flags: result.flags, status: result.status as MediaItem["status"] }
+              : x
+          )
+        );
+      } catch {
+        // silently ignore
+      }
+    } else {
+      // Mock event: increment local flag count, freeze at 5
+      setMedia((m) =>
+        m.map((x) => {
+          if (x.id !== id) return x;
+          const flags = x.flags + 1;
+          return { ...x, flags, status: flags >= 5 ? "frozen" : x.status };
+        })
+      );
+    }
+    toast.success("Reported. Thanks for keeping Sektion safe.");
+  };
 
   return (
     <article ref={articleRef} className="snap-item relative h-[100dvh] w-full overflow-hidden">

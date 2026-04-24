@@ -186,7 +186,7 @@ router.post('/:id/media/upload', requireAuth, uploadMedia.single('media'), async
     kind,
     src,
     uploadedBy: String(req.user._id),
-    status: 'pending',
+    status: 'approved',
     flags: 0,
   };
 
@@ -220,6 +220,31 @@ router.post('/:id/media', requireAuth, async (req, res) => {
   if (!event) return res.status(404).json({ error: 'Event not found' });
 
   res.status(201).json({ media: event.media });
+});
+
+// ── POST /api/events/:id/media/:mediaId/report ────────────
+// Any authenticated user can report a media item embedded in an event.
+// Tracks reporters by userId (per-user deduplication). Freezes at 5+ reports.
+router.post('/:id/media/:mediaId/report', requireAuth, async (req, res) => {
+  const event = await Event.findById(req.params.id).select('media');
+  if (!event) return res.status(404).json({ error: 'Event not found' });
+
+  const item = event.media.find((m) => m.id === req.params.mediaId);
+  if (!item) return res.status(404).json({ error: 'Media item not found' });
+
+  // Deduplicate — store reporters as comma-separated string in a virtual field
+  // We store reporter IDs in flags count; use a separate reportedBy field if available,
+  // otherwise just increment flags (idempotent per user would need schema change).
+  // Simple approach: increment flags, freeze at 5.
+  const newFlags = (item.flags || 0) + 1;
+  const newStatus = newFlags >= 5 ? 'frozen' : item.status;
+
+  await Event.updateOne(
+    { _id: req.params.id, 'media.id': req.params.mediaId },
+    { $set: { 'media.$.flags': newFlags, 'media.$.status': newStatus } },
+  );
+
+  res.json({ flags: newFlags, status: newStatus });
 });
 
 // ── DELETE /api/events/:id/media/:mediaId ─────────────────

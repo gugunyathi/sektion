@@ -1,7 +1,7 @@
 import { MediaItem } from "@/data/events";
 import { useEffect, useRef, useState, TouchEvent, KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
-import { Flag, Plus, Trash2, ShieldAlert, Play, CheckCircle2, Clock } from "lucide-react";
+import { Flag, Plus, Trash2, Play, CheckCircle2, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 /** Inject Cloudinary auto-quality + auto-format transformations for faster delivery */
@@ -44,8 +44,8 @@ export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag, 
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
   const touchStartX = useRef<number | null>(null);
 
-  // Filter frozen content, then sort to prioritize videos first
-  const visible = media.filter((m) => m.status !== "frozen" || isHost);
+  // Filter frozen content for all users — frozen slides are silently skipped
+  const visible = media.filter((m) => m.status !== "frozen");
   const sorted = [...visible].sort((a, b) => {
     // Videos first
     if (a.kind === "video" && b.kind !== "video") return -1;
@@ -113,7 +113,7 @@ export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag, 
 
   const handleFlag = (id: string) => {
     onFlag?.(id);
-    toast.success("Reported. Frozen pending review by moderators.");
+    toast.success("Reported. Thanks for keeping Sektion safe.");
   };
 
   const handleRemove = (id: string) => {
@@ -139,7 +139,6 @@ export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag, 
       <div ref={trackRef} className="absolute inset-0">
         {sorted.map((m, i) => {
           const isCurrent = i === safeIndex;
-          const frozen = m.status === "frozen";
           return (
             <div
               key={m.id}
@@ -166,15 +165,6 @@ export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag, 
                   className="absolute inset-0 h-full w-full object-cover"
                   loading={i === safeIndex ? "eager" : "lazy"}
                 />
-              )}
-              {frozen && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/90 backdrop-blur-md text-center px-8">
-                  <ShieldAlert className="h-10 w-10 text-destructive" />
-                  <p className="font-display text-lg font-bold">Frozen pending review</p>
-                  <p className="text-sm text-foreground/70 max-w-xs">
-                    This media was reported and is hidden from the public until AI + human moderators complete review.
-                  </p>
-                </div>
               )}
             </div>
           );

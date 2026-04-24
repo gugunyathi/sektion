@@ -89,8 +89,8 @@ router.post('/media/:id/flag', requireAuth, async (req, res) => {
   if (!alreadyFlagged) {
     media.flaggedBy.push(req.user._id);
     media.flags = media.flaggedBy.length;
-    // Auto-freeze at 3+ flags
-    if (media.flags >= 3 && media.status !== 'frozen') {
+    // Auto-freeze at 5+ flags
+    if (media.flags >= 5 && media.status !== 'frozen') {
       media.status = 'frozen';
     }
     await media.save();
