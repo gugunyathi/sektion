@@ -223,7 +223,7 @@ export const EventCard = ({ event, onOpen, initialActive = false }: { event: Eve
         </div>
       </header>
 
-      {/* Action rail — raised so bookmark clears the CTA button */
+      {/* Action rail — raised so bookmark clears the CTA button */}
       <aside className="absolute bottom-52 right-4 z-10 flex flex-col items-end gap-5">
         {/* Upload / delete media controls (host only) — horizontal pair, right-aligned */}
         {isHost && currentMedia && (
@@ -315,6 +315,7 @@ export const EventCard = ({ event, onOpen, initialActive = false }: { event: Eve
           </button>
         )}
         {allItems.length > 0 && (
+          <>
           <div className="no-scrollbar flex flex-1 gap-2 overflow-x-auto">
             {allItems.slice(0, 6).map((item) => (
               <div
@@ -332,6 +333,7 @@ export const EventCard = ({ event, onOpen, initialActive = false }: { event: Eve
           >
             <ChevronRight className="h-4 w-4" />
           </button>
+          </>
         )}
       </div>
 
