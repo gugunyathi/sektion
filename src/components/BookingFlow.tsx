@@ -53,7 +53,7 @@ export const BookingFlow = ({
   const [tableId, setTableId] = useState<string | null>(null);
 
   // Detect if this is a DB-backed event (has a MongoDB _id)
-  const dbId = (event as unknown as { _id?: string })._id;
+  const dbId = event ? (event as unknown as { _id?: string })._id : undefined;
 
   // Fetch real availability whenever the sheet opens for a DB event
   useEffect(() => {
