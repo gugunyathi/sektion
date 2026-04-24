@@ -46,12 +46,42 @@ export const BookingFlow = ({
   onOpenChange: (o: boolean) => void;
 }) => {
   const { createHold, confirmPayment } = useBooking();
-  const { seatsLeftForTable } = useInventory();
+  const { seatsLeftForTable, seatsLeftForEvent } = useInventory();
+  const { fetchAvailability, getEventAvailability } = useSeatAvailability();
   const [step, setStep] = useState<Step>("guests");
   const [guests, setGuests] = useState(1);
   const [tableId, setTableId] = useState<string | null>(null);
 
-  const tables = useMemo(() => (event ? getTablesForEvent(event) : []), [event]);
+  // Detect if this is a DB-backed event (has a MongoDB _id)
+  const dbId = (event as unknown as { _id?: string })._id;
+
+  // Fetch real availability whenever the sheet opens for a DB event
+  useEffect(() => {
+    if (open && dbId && event) {
+      fetchAvailability(event.id);
+    }
+  }, [open, event?.id, dbId, fetchAvailability]);
+
+  // For DB events, use real tables from the API; fall back to mock-generated tables
+  const apiAvailability = dbId ? getEventAvailability(event?.id ?? "") : null;
+  const tables = useMemo(() => {
+    if (apiAvailability?.tables && apiAvailability.tables.length > 0) {
+      return apiAvailability.tables.map((t): Table => ({
+        id: t.id,
+        label: t.label,
+        capacity: t.capacity,
+        taken: t.taken,
+        perks: t.perks,
+        vibe: t.vibe,
+        tableType: t.tableType as TableType,
+        includedItems: t.includedItems,
+      }));
+    }
+    return event ? getTablesForEvent(event) : [];
+  }, [event, apiAvailability]);
+
+  // Real seatsLeft: from API for DB events, from InventoryContext for mock events
+  const seatsLeft = apiAvailability?.seatsLeft ?? (event ? seatsLeftForEvent(event.id) : 0);
 
   // Reset on open/close
   useEffect(() => {
@@ -83,21 +113,25 @@ export const BookingFlow = ({
     setStep("pay");
   };
 
-  const handlePay = () => {
+  const handlePay = async () => {
     if (!selectedTable) return;
-    // Final live-availability check: count current user's own hold as already
-    // accounted for, so re-validate against table.capacity - other locks.
-    const free = seatsLeftForTable(event.id, selectedTable.id) + guests;
-    if (free < guests) {
-      toast.error("Seats just got taken", {
-        description: "Please pick another table — this one no longer fits your party.",
-      });
-      setStep("tables");
-      return;
+    try {
+      await confirmPayment();
+      setStep("done");
+      // Refresh availability after confirm so seat counts update
+      if (dbId && event) fetchAvailability(event.id);
+      toast.success("Seat confirmed 🎉", { description: `${event.title} · ${event.date}` });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Booking failed";
+      if (msg.includes("seat") || msg.includes("available")) {
+        toast.error("Seats just got taken", {
+          description: "Please pick another table — this one no longer fits your party.",
+        });
+        setStep("tables");
+      } else {
+        toast.error(msg);
+      }
     }
-    confirmPayment();
-    setStep("done");
-    toast.success("Seat confirmed 🎉", { description: `${event.title} · ${event.date}` });
   };
 
   const STEP_INDEX: Record<Step, number> = { guests: 0, tables: 1, review: 2, pay: 3, done: 4 };
@@ -144,7 +178,7 @@ export const BookingFlow = ({
         {/* Body */}
         <div className="h-[calc(92dvh-150px)] overflow-y-auto px-5 pb-32 pt-5">
           {step === "guests" && (
-            <GuestsStep event={event} guests={guests} setGuests={setGuests} />
+            <GuestsStep event={event} guests={guests} setGuests={setGuests} seatsLeft={seatsLeft} />
           )}
           {step === "tables" && (
             <TablesStep
@@ -230,13 +264,15 @@ const GuestsStep = ({
   event,
   guests,
   setGuests,
+  seatsLeft: seatsLeftProp,
 }: {
   event: Event;
   guests: number;
   setGuests: (n: number) => void;
+  seatsLeft?: number;
 }) => {
   const { seatsLeftForEvent } = useInventory();
-  const seatsLeft = seatsLeftForEvent(event.id);
+  const seatsLeft = seatsLeftProp ?? seatsLeftForEvent(event.id);
   return (
     <div className="space-y-6 animate-float-up">
       <div>

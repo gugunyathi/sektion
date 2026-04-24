@@ -1,9 +1,43 @@
 const router = require('express').Router();
 const { body, validationResult } = require('express-validator');
 const Booking = require('../models/Booking');
+const Event = require('../models/Event');
+const mongoose = require('mongoose');
 const { requireAuth } = require('../middleware/auth');
 
 const HOLD_MS = 60 * 60 * 1000; // 1 hour
+
+// ── helpers ─────────────────────────────────────────────
+/** Count seats already held or confirmed on a specific table */
+async function countActiveBookings(eventId, tableId) {
+  const now = new Date();
+  const result = await Booking.aggregate([
+    {
+      $match: {
+        eventId: String(eventId),
+        tableId: String(tableId),
+        $or: [
+          { status: 'confirmed' },
+          { status: 'held', expiresAt: { $gt: now } },
+        ],
+      },
+    },
+    { $group: { _id: null, total: { $sum: '$guests' } } },
+  ]);
+  return result[0]?.total ?? 0;
+}
+
+/** Atomically decrement / increment seatsLeft and table.taken on an Event */
+async function adjustEventSeats(eventId, tableId, delta) {
+  if (!mongoose.isValidObjectId(eventId)) return;
+  await Promise.all([
+    Event.findByIdAndUpdate(eventId, { $inc: { seatsLeft: delta } }),
+    Event.updateOne(
+      { _id: eventId, 'tables.id': tableId },
+      { $inc: { 'tables.$.taken': -delta } }, // taken increases when delta is negative
+    ),
+  ]);
+}
 
 // ── GET /api/bookings ────────────────────────────────────
 router.get('/', requireAuth, async (req, res) => {
@@ -49,6 +83,21 @@ router.post('/',
       tableId, tableLabel, guests, pricePerSeat,
     } = req.body;
 
+    // ── Real-time seat availability check for DB events ──
+    if (mongoose.isValidObjectId(eventId)) {
+      const ev = await Event.findById(eventId).select('totalSeats tables').lean();
+      if (ev) {
+        const alreadyBooked = await countActiveBookings(eventId, tableId);
+        const table = ev.tables?.find((t) => t.id === String(tableId));
+        const cap = table?.capacity ?? ev.totalSeats;
+        if (cap - alreadyBooked < guests) {
+          return res.status(409).json({
+            error: `Only ${Math.max(0, cap - alreadyBooked)} seat(s) available on this table`,
+          });
+        }
+      }
+    }
+
     const now = Date.now();
     const booking = await Booking.create({
       userId: req.user._id,
@@ -81,6 +130,10 @@ router.patch('/:id/confirm', requireAuth, async (req, res) => {
   if (req.body.paymentRef) booking.paymentRef = req.body.paymentRef;
   if (req.body.paymentMethod) booking.paymentMethod = req.body.paymentMethod;
   await booking.save();
+
+  // Decrement event seatsLeft and table.taken
+  await adjustEventSeats(booking.eventId, booking.tableId, -booking.guests);
+
   res.json(formatBooking(booking));
 });
 
@@ -91,9 +144,16 @@ router.patch('/:id/cancel', requireAuth, async (req, res) => {
   if (!['held', 'confirmed'].includes(booking.status)) {
     return res.status(400).json({ error: `Cannot cancel a ${booking.status} booking` });
   }
+  const wasConfirmed = booking.status === 'confirmed';
   booking.status = 'cancelled';
   booking.cancelledAt = new Date();
   await booking.save();
+
+  // Restore seats only if booking was confirmed (held seats were never decremented)
+  if (wasConfirmed) {
+    await adjustEventSeats(booking.eventId, booking.tableId, booking.guests);
+  }
+
   res.json(formatBooking(booking));
 });
 

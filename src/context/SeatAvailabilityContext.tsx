@@ -4,8 +4,28 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
+import { api } from "@/lib/api";
+
+export type ApiTableAvailability = {
+  id: string;
+  label: string;
+  capacity: number;
+  taken: number;
+  available: number;
+  tableType: string;
+  vibe: string;
+  perks: string[];
+  includedItems: { id: string; emoji: string; name: string; category: string }[];
+};
+
+export type EventAvailability = {
+  seatsLeft: number;
+  totalSeats: number;
+  tables: ApiTableAvailability[];
+};
 
 export type SeatAvailability = {
   eventId: string;
@@ -25,12 +45,18 @@ type Ctx = {
     reason: "no_show" | "voluntary";
   }) => void;
   getAvailableSeats: (eventId: string, tableId: string) => number;
+  /** Fetch real-time availability from the API for a DB event */
+  fetchAvailability: (eventId: string) => Promise<void>;
+  /** Returns fetched availability data if available */
+  getEventAvailability: (eventId: string) => EventAvailability | null;
 };
 
 const SeatAvailabilityContext = createContext<Ctx | null>(null);
 
 export const SeatAvailabilityProvider = ({ children }: { children: ReactNode }) => {
   const [availability, setAvailability] = useState<SeatAvailability[]>([]);
+  const [apiAvailMap, setApiAvailMap] = useState<Record<string, EventAvailability>>({});
+  const fetchingRef = useRef<Set<string>>(new Set());
 
   // Auto-cleanup old releases after 2 hours
   useEffect(() => {
@@ -99,12 +125,32 @@ export const SeatAvailabilityProvider = ({ children }: { children: ReactNode }) 
     [availability]
   );
 
+  const fetchAvailability = useCallback(async (eventId: string) => {
+    if (fetchingRef.current.has(eventId)) return;
+    fetchingRef.current.add(eventId);
+    try {
+      const data = await api.get<EventAvailability>(`/api/events/${eventId}/availability`);
+      setApiAvailMap((prev) => ({ ...prev, [eventId]: data }));
+    } catch {
+      // silently ignore — falls back to mock data
+    } finally {
+      fetchingRef.current.delete(eventId);
+    }
+  }, []);
+
+  const getEventAvailability = useCallback(
+    (eventId: string): EventAvailability | null => apiAvailMap[eventId] ?? null,
+    [apiAvailMap]
+  );
+
   return (
     <SeatAvailabilityContext.Provider
       value={{
         availability,
         releaseSeat,
         getAvailableSeats,
+        fetchAvailability,
+        getEventAvailability,
       }}
     >
       {children}

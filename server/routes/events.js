@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const Event = require('../models/Event');
+const Booking = require('../models/Booking');
 const { optionalAuth, requireAuth } = require('../middleware/auth');
 const { uploadMedia, toPublicUrl } = require('../middleware/upload');
 const path = require('path');
@@ -61,6 +62,18 @@ router.post('/', requireAuth, async (req, res) => {
     flags: 0,
   }));
 
+  // Auto-create 3 default tables so the booking flow works for user-created events
+  const nSeats = Number(totalSeats) || 0;
+  const defaultTables = [];
+  if (nSeats > 0) {
+    const cap = Math.max(2, Math.ceil(nSeats / 3));
+    defaultTables.push(
+      { id: 't1', label: 'Table 01 · Centre Stage', capacity: cap + 2, taken: 0, perks: ['Bottle service', 'Best view'], vibe: 'High-energy', tableType: 'host_pays', includedItems: [] },
+      { id: 't2', label: 'Table 02 · Skyline Booth', capacity: cap, taken: 0, perks: ['DJ access', 'Curated mix'], vibe: 'Curated mix', tableType: 'lgbtq', includedItems: [] },
+      { id: 't3', label: 'Table 03 · Lounge Side', capacity: Math.max(2, cap - 1), taken: 0, perks: ['Low-key vibes', 'Conversational'], vibe: 'Conversational', tableType: 'couples', includedItems: [] },
+    );
+  }
+
   const event = await Event.create({
     slug,
     title: title.trim(),
@@ -71,17 +84,61 @@ router.post('/', requireAuth, async (req, res) => {
     category,
     vibes: Array.isArray(vibes) ? vibes : [],
     pricePerSeat: Number(pricePerSeat) || 0,
-    totalSeats: Number(totalSeats) || 0,
-    seatsLeft: Number(seatsLeft ?? totalSeats) || 0,
+    totalSeats: nSeats,
+    seatsLeft: nSeats,
     hostNote: (hostNote || '').trim(),
     trending: Boolean(trending),
     surge: Boolean(surge),
     media,
+    tables: defaultTables,
     isActive: true,
     createdBy: req.user._id,
   });
 
   res.status(201).json(event);
+});
+
+// ── GET /api/events/:id/availability ─────────────────────────────────
+router.get('/:id/availability', optionalAuth, async (req, res) => {
+  const event = await Event.findById(req.params.id)
+    .select('totalSeats seatsLeft tables')
+    .lean();
+  if (!event) return res.status(404).json({ error: 'Event not found' });
+
+  const now = new Date();
+  const agg = await Booking.aggregate([
+    {
+      $match: {
+        eventId: req.params.id,
+        $or: [
+          { status: 'confirmed' },
+          { status: 'held', expiresAt: { $gt: now } },
+        ],
+      },
+    },
+    { $group: { _id: '$tableId', booked: { $sum: '$guests' } } },
+  ]);
+
+  const bookedByTable = Object.fromEntries(agg.map((r) => [r._id, r.booked]));
+  const totalBooked = Object.values(bookedByTable).reduce((a, b) => a + b, 0);
+
+  const tables = (event.tables ?? []).map((t) => ({
+    id: t.id,
+    label: t.label,
+    capacity: t.capacity,
+    taken: (t.taken ?? 0) + (bookedByTable[t.id] ?? 0),
+    available: Math.max(0, t.capacity - (t.taken ?? 0) - (bookedByTable[t.id] ?? 0)),
+    tableType: t.tableType,
+    vibe: t.vibe,
+    perks: t.perks ?? [],
+    includedItems: t.includedItems ?? [],
+  }));
+
+  res.json({
+    seatsLeft: Math.max(0, event.totalSeats - totalBooked),
+    totalSeats: event.totalSeats,
+    tables,
+  });
 });
 
 // ── GET /api/events/:id ──────────────────────────────────
