@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { getTablesForEvent, IncludedItem } from "@/data/tables";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 
-export const EventCard = ({ event, onOpen, initialActive = false }: { event: Event; onOpen: (e: Event) => void; initialActive?: boolean }) => {
+export const EventCard = ({ event, onOpen, initialActive = false, muted: mutedProp, onMutedChange }: { event: Event; onOpen: (e: Event) => void; initialActive?: boolean; muted?: boolean; onMutedChange?: (m: boolean) => void }) => {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [sharersOpen, setSharersOpen] = useState(false);
@@ -26,7 +26,12 @@ export const EventCard = ({ event, onOpen, initialActive = false }: { event: Eve
   const [media, setMedia] = useState<MediaItem[]>(event.media ?? []);
   const [currentMedia, setCurrentMedia] = useState<{ id: string; kind: MediaItem["kind"]; status: MediaItem["status"] } | null>(null);
   const [active, setActive] = useState(initialActive);
-  const [muted, setMuted] = useState(true);
+  const [internalMuted, setInternalMuted] = useState(true);
+  const muted = mutedProp !== undefined ? mutedProp : internalMuted;
+  const setMuted = (v: boolean | ((prev: boolean) => boolean)) => {
+    const next = typeof v === "function" ? v(muted) : v;
+    if (onMutedChange) onMutedChange(next); else setInternalMuted(next);
+  };
   const articleRef = useRef<HTMLElement>(null);
   const itemFileRef = useRef<HTMLInputElement>(null);
   const { seatsLeftForEvent } = useInventory();

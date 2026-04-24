@@ -16,6 +16,15 @@ export const FeedScreen = ({ refreshKey = 0 }: { refreshKey?: number }) => {
   const [modOpen, setModOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const gatedRef = useRef(false);
+  const MUTED_KEY = "sektion:muted";
+  const [globalMuted, setGlobalMuted] = useState<boolean>(() => {
+    try { return localStorage.getItem(MUTED_KEY) !== "false"; } catch { return true; }
+  });
+  const handleMutedChange = (m: boolean) => {
+    setGlobalMuted(m);
+    try { localStorage.setItem(MUTED_KEY, String(m)); } catch { /* quota */ }
+  };
+
   const CACHE_KEY = "sektion:feed:events";
 
   // Helper to normalise a raw API event into a full Event shape
@@ -175,6 +184,8 @@ export const FeedScreen = ({ refreshKey = 0 }: { refreshKey?: number }) => {
             event={{ ...e, media: allMedia[e.id] ?? e.media }}
             onOpen={handleOpenBooking}
             initialActive={i === 0}
+            muted={globalMuted}
+            onMutedChange={handleMutedChange}
           />
         ))}
       </div>
