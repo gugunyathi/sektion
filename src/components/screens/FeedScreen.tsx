@@ -30,7 +30,9 @@ export const FeedScreen = () => {
       .then(({ events }) => {
         // Filter out any that share an id with mock events
         const mockIds = new Set(EVENTS.map((e) => e.id));
-        const fresh = events.filter((e) => !mockIds.has(e.id) && !mockIds.has(String(e._id)));
+        const fresh = events
+          .filter((e) => !mockIds.has(e.id) && !mockIds.has(String(e._id)))
+          .map((e) => ({ ...e, id: e.id || String(e._id) }));
         setApiEvents(fresh);
       })
       .catch(() => {/* silently ignore — offline or no DB */});
