@@ -295,8 +295,8 @@ export const EventCard = ({ event, onOpen, initialActive = false }: { event: Eve
       <div className="absolute inset-x-0 z-30 flex items-center gap-2 px-4"
         style={{ top: "calc(max(3.75rem, env(safe-area-inset-top) + 2.5rem) + 3rem)" }}
       >
-        {/* Volume toggle — floats in the items strip row, shown whenever a video slide is active */}
-        {currentMedia?.kind === "video" && currentMedia?.status === "approved" && (
+        {/* Volume toggle — floats in the items strip row, shown whenever a video slide is current (any non-frozen status) */}
+        {currentMedia?.kind === "video" && currentMedia?.status !== "frozen" && (
           <button
             onClick={() => setMuted((m) => !m)}
             aria-label={muted ? "Unmute video" : "Mute video"}

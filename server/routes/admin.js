@@ -3,6 +3,7 @@ const { requireAuth, requireAdmin } = require('../middleware/auth');
 const Media = require('../models/Media');
 const User = require('../models/User');
 const Session = require('../models/Session');
+const Event = require('../models/Event');
 
 router.use(requireAuth, requireAdmin);
 
@@ -53,6 +54,17 @@ router.delete('/media/:id', async (req, res) => {
   const media = await Media.findByIdAndDelete(req.params.id);
   if (!media) return res.status(404).json({ error: 'Not found' });
   res.json({ message: 'Deleted' });
+});
+
+// ── POST /api/admin/approve-all-media ───────────────────
+// One-time migration: approve all pending/unknown-status event media items in MongoDB
+router.post('/approve-all-media', async (req, res) => {
+  const result = await Event.updateMany(
+    { 'media.status': { $in: ['pending', null, undefined] } },
+    { $set: { 'media.$[elem].status': 'approved' } },
+    { arrayFilters: [{ 'elem.status': { $in: ['pending', null] } }], multi: true }
+  );
+  res.json({ message: 'Done', modifiedCount: result.modifiedCount });
 });
 
 // ── GET /api/admin/users ─────────────────────────────────

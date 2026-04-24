@@ -65,7 +65,8 @@ export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag, 
   useEffect(() => {
     Object.entries(videoRefs.current).forEach(([id, vid]) => {
       if (!vid) return;
-      const isTarget = active && current && id === current.id && current.kind === "video" && current.status === "approved";
+      // Play any video slide that is current and not frozen (pending is fine — only frozen is blocked)
+      const isTarget = active && current && id === current.id && current.kind === "video" && current.status !== "frozen";
       if (isTarget) {
         vid.muted = muted;
         const playPromise = vid.play();

@@ -16,8 +16,33 @@ export const FeedScreen = ({ refreshKey = 0 }: { refreshKey?: number }) => {
   const [modOpen, setModOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const gatedRef = useRef(false);
-  // API-loaded events (newest first)
-  const [apiEvents, setApiEvents] = useState<Event[]>([]);
+  const CACHE_KEY = "sektion:feed:events";
+
+  // Helper to normalise a raw API event into a full Event shape
+  const normalise = (e: Event & { _id: string; createdAt: string }): Event => ({
+    sharers: [],
+    image: "",
+    dateISO: e.date ?? "",
+    trending: false,
+    surge: false,
+    seatsLeft: 0,
+    totalSeats: 0,
+    pricePerSeat: 0,
+    hostNote: "",
+    time: "",
+    ...e,
+    id: e.id || String(e._id),
+    vibes: Array.isArray(e.vibes) ? e.vibes : [],
+    media: Array.isArray(e.media) ? e.media : [],
+  });
+
+  // Seed from sessionStorage cache so user events appear immediately (stale-while-revalidate)
+  const [apiEvents, setApiEvents] = useState<Event[]>(() => {
+    try {
+      const cached = sessionStorage.getItem(CACHE_KEY);
+      return cached ? (JSON.parse(cached) as Event[]) : [];
+    } catch { return []; }
+  });
 
   // Track all event media in state so moderation actions persist
   const [allMedia, setAllMedia] = useState<Record<string, MediaItem[]>>(
@@ -33,24 +58,10 @@ export const FeedScreen = ({ refreshKey = 0 }: { refreshKey?: number }) => {
         const fresh = events
           .filter((e) => !mockIds.has(e.id) && !mockIds.has(String(e._id)))
           .sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())
-          .map((e) => ({
-            // Provide safe defaults for all fields EventCard/BookingFlow expect
-            sharers: [],
-            image: "",
-            dateISO: e.date ?? "",
-            trending: false,
-            surge: false,
-            seatsLeft: 0,
-            totalSeats: 0,
-            pricePerSeat: 0,
-            hostNote: "",
-            time: "",
-            ...e,
-            id: e.id || String(e._id),
-            vibes: Array.isArray(e.vibes) ? e.vibes : [],
-            media: Array.isArray(e.media) ? e.media : [],
-          }));
+          .map(normalise);
         setApiEvents(fresh);
+        // Cache for next page load
+        try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(fresh)); } catch { /* quota */ }
       })
       .catch(() => {/* silently ignore — offline or no DB */});
   }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
