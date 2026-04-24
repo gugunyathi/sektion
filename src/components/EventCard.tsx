@@ -18,13 +18,6 @@ export const EventCard = ({ event, onOpen, initialActive = false }: { event: Eve
   const [saved, setSaved] = useState(false);
   const [sharersOpen, setSharersOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [muted, setMuted] = useState(true);
-  const [isVideoActive, setIsVideoActive] = useState(false);
-
-  // Reset video-active flag when card leaves viewport
-  useEffect(() => {
-    if (!active) setIsVideoActive(false);
-  }, [active]);
   const [itemsOpen, setItemsOpen] = useState(false);
   const [itemImages, setItemImages] = useState<Record<string, string>>({});
   const [editingItem, setEditingItem] = useState<IncludedItem | null>(null);
@@ -33,11 +26,18 @@ export const EventCard = ({ event, onOpen, initialActive = false }: { event: Eve
   const [media, setMedia] = useState<MediaItem[]>(event.media ?? []);
   const [currentMedia, setCurrentMedia] = useState<{ id: string; kind: MediaItem["kind"]; status: MediaItem["status"] } | null>(null);
   const [active, setActive] = useState(initialActive);
+  const [muted, setMuted] = useState(true);
+  const [isVideoActive, setIsVideoActive] = useState(false);
   const articleRef = useRef<HTMLElement>(null);
   const itemFileRef = useRef<HTMLInputElement>(null);
   const { seatsLeftForEvent } = useInventory();
   const { user } = useAuth();
   const seatsLeft = seatsLeftForEvent(event.id);
+
+  // Reset video-active flag when card leaves viewport
+  useEffect(() => {
+    if (!active) setIsVideoActive(false);
+  }, [active]);
 
   // Gather included items from all tables for this event
   const allItems: IncludedItem[] = (() => {
