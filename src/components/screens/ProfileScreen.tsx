@@ -7,8 +7,10 @@ import {
   FileEdit,
   Flame,
   LogOut,
+  MoreVertical,
   Pencil,
   Settings,
+  Trash2,
   Trophy,
   Upload,
   Utensils,
@@ -23,6 +25,20 @@ import { useBooking } from "@/context/BookingContext";
 import { useAuth } from "@/context/AuthContext";
 import { useBookmarks } from "@/context/BookmarksContext";
 import { api } from "@/lib/api";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import a1 from "@/assets/avatar-1.jpg";
 import club from "@/assets/event-club.jpg";
 import dining from "@/assets/event-dining.jpg";
@@ -124,65 +140,196 @@ interface ApiEvent {
   createdAt?: string;
 }
 
+interface EditForm {
+  title: string;
+  venue: string;
+  city: string;
+  date: string;
+  time: string;
+  hostNote: string;
+}
+
 function MySektionsSection() {
-  const { user, isAuthed } = useAuth();
+  const { isAuthed } = useAuth();
   const [events, setEvents] = useState<ApiEvent[]>([]);
   const [loading, setLoading] = useState(false);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ApiEvent | null>(null);
+  const [editTarget, setEditTarget] = useState<ApiEvent | null>(null);
+  const [editForm, setEditForm] = useState<EditForm>({ title: "", venue: "", city: "", date: "", time: "", hostNote: "" });
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
+  const load = () => {
     if (!isAuthed) return;
     setLoading(true);
     api.get<{ events: ApiEvent[] }>("/api/events?mine=1&limit=50")
-      .then(({ events: all }) => {
-        setEvents(all.slice(0, 20));
-      })
-      .catch(() => {/* silently ignore */})
+      .then(({ events: all }) => setEvents(all.slice(0, 20)))
+      .catch(() => {})
       .finally(() => setLoading(false));
-  }, [isAuthed]);
+  };
+
+  useEffect(() => { load(); }, [isAuthed]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const openEdit = (e: ApiEvent) => {
+    setEditForm({
+      title: e.title ?? "",
+      venue: e.venue ?? "",
+      city: e.city ?? "",
+      date: e.date ?? "",
+      time: "",
+      hostNote: "",
+    });
+    setEditTarget(e);
+    setMenuOpenId(null);
+  };
+
+  const handleSave = async () => {
+    if (!editTarget) return;
+    setSaving(true);
+    try {
+      await api.patch(`/api/events/${editTarget._id}`, editForm);
+      toast.success("Sektion updated");
+      setEditTarget(null);
+      load();
+    } catch {
+      toast.error("Failed to save changes");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await api.delete(`/api/events/${deleteTarget._id}`);
+      toast.success("Sektion removed from feed");
+      setEvents((prev) => prev.filter((e) => e._id !== deleteTarget._id));
+    } catch {
+      toast.error("Failed to remove sektion");
+    } finally {
+      setDeleteTarget(null);
+    }
+  };
 
   if (!isAuthed) return null;
   if (!loading && events.length === 0) return null;
 
   return (
-    <section className="mt-8 px-5">
-      <h2 className="font-display mb-3 text-sm font-bold uppercase tracking-wider flex items-center gap-2">
-        <Upload className="h-4 w-4 text-blue-400" /> My Sektions
-        {events.length > 0 && <span className="text-muted-foreground font-normal normal-case tracking-normal text-xs">· {events.length}</span>}
-      </h2>
-      {loading ? (
-        <div className="flex gap-3 overflow-x-auto -mx-5 px-5 pb-2 no-scrollbar">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="shrink-0 w-36 h-44 glass rounded-2xl animate-pulse" />
-          ))}
-        </div>
-      ) : (
-        <div className="no-scrollbar -mx-5 flex gap-3 overflow-x-auto px-5 pb-2">
-          {events.map((e) => {
-            const cover = e.media?.find((m) => m.kind === "image")?.src ?? e.media?.[0]?.src;
-            return (
-              <div key={e._id} className="shrink-0 w-36 glass rounded-2xl overflow-hidden">
-                {cover ? (
-                  <img src={cover} alt={e.title} className="h-20 w-full object-cover" loading="lazy" width={144} height={80} />
-                ) : (
-                  <div className="h-20 w-full bg-gradient-to-br from-blue-900/40 to-purple-900/40 flex items-center justify-center">
-                    <Upload className="h-6 w-6 text-white/30" />
-                  </div>
-                )}
-                <div className="p-2">
-                  <p className="text-xs font-bold leading-tight line-clamp-2">{e.title}</p>
-                  {e.venue && <p className="text-[10px] text-muted-foreground truncate mt-0.5">{e.venue}</p>}
-                  {e.category && (
-                    <span className="mt-1 inline-block rounded-full bg-blue-500/15 px-1.5 py-0.5 text-[9px] font-bold text-blue-400">
-                      {e.category}
-                    </span>
+    <>
+      <section className="mt-8 px-5">
+        <h2 className="font-display mb-3 text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+          <Upload className="h-4 w-4 text-blue-400" /> My Sektions
+          {events.length > 0 && <span className="text-muted-foreground font-normal normal-case tracking-normal text-xs">· {events.length}</span>}
+        </h2>
+        {loading ? (
+          <div className="flex gap-3 overflow-x-auto -mx-5 px-5 pb-2 no-scrollbar">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="shrink-0 w-36 h-44 glass rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="no-scrollbar -mx-5 flex gap-3 overflow-x-auto px-5 pb-2">
+            {events.map((e) => {
+              const cover = e.media?.find((m) => m.kind === "image")?.src ?? e.media?.[0]?.src;
+              const isMenuOpen = menuOpenId === e._id;
+              return (
+                <div key={e._id} className="shrink-0 w-36 glass rounded-2xl overflow-hidden relative">
+                  {cover ? (
+                    <img src={cover} alt={e.title} className="h-20 w-full object-cover" loading="lazy" width={144} height={80} />
+                  ) : (
+                    <div className="h-20 w-full bg-gradient-to-br from-blue-900/40 to-purple-900/40 flex items-center justify-center">
+                      <Upload className="h-6 w-6 text-white/30" />
+                    </div>
                   )}
+                  {/* 3-dot menu button */}
+                  <button
+                    onClick={() => setMenuOpenId(isMenuOpen ? null : e._id)}
+                    className="absolute top-1 right-1 z-10 h-7 w-7 flex items-center justify-center rounded-full bg-black/50 backdrop-blur-sm"
+                    aria-label="Options"
+                  >
+                    <MoreVertical className="h-3.5 w-3.5 text-white" />
+                  </button>
+                  {/* Dropdown menu */}
+                  {isMenuOpen && (
+                    <div className="absolute top-8 right-1 z-20 glass rounded-xl overflow-hidden min-w-[120px] shadow-xl border border-white/10">
+                      <button
+                        onClick={() => openEdit(e)}
+                        className="flex w-full items-center gap-2 px-3 py-2.5 text-xs font-semibold hover:bg-white/10 transition-colors"
+                      >
+                        <Pencil className="h-3.5 w-3.5 text-blue-400" /> Edit
+                      </button>
+                      <button
+                        onClick={() => { setDeleteTarget(e); setMenuOpenId(null); }}
+                        className="flex w-full items-center gap-2 px-3 py-2.5 text-xs font-semibold hover:bg-white/10 transition-colors text-red-400"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Delete
+                      </button>
+                    </div>
+                  )}
+                  <div className="p-2">
+                    <p className="text-xs font-bold leading-tight line-clamp-2">{e.title}</p>
+                    {e.venue && <p className="text-[10px] text-muted-foreground truncate mt-0.5">{e.venue}</p>}
+                    {e.category && (
+                      <span className="mt-1 inline-block rounded-full bg-blue-500/15 px-1.5 py-0.5 text-[9px] font-bold text-blue-400">
+                        {e.category}
+                      </span>
+                    )}
+                  </div>
                 </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Edit Sheet */}
+      <Sheet open={!!editTarget} onOpenChange={(o) => !o && setEditTarget(null)}>
+        <SheetContent side="bottom" className="rounded-t-3xl max-h-[90dvh] overflow-y-auto">
+          <SheetHeader className="mb-4">
+            <SheetTitle>Edit Sektion</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-4 pb-6">
+            {(["title", "venue", "city", "date", "time", "hostNote"] as (keyof EditForm)[]).map((field) => (
+              <div key={field} className="space-y-1.5">
+                <Label htmlFor={`edit-${field}`} className="capitalize text-xs">{field === "hostNote" ? "Host Note" : field}</Label>
+                <Input
+                  id={`edit-${field}`}
+                  value={editForm[field]}
+                  onChange={(ev) => setEditForm((f) => ({ ...f, [field]: ev.target.value }))}
+                  type={field === "date" ? "date" : "text"}
+                  className="glass border-white/10"
+                />
               </div>
-            );
-          })}
-        </div>
-      )}
-    </section>
+            ))}
+            <button
+              onClick={handleSave}
+              disabled={saving || !editForm.title.trim()}
+              className="w-full rounded-2xl bg-gradient-primary py-3 text-sm font-bold shadow-neon disabled:opacity-50 mt-2"
+            >
+              {saving ? "Saving…" : "Save Changes"}
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Delete Confirm */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this Sektion?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{deleteTarget?.title}</strong> will be hidden from the feed and your profile. The data is retained in the system for audit purposes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white">
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
