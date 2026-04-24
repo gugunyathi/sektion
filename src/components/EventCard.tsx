@@ -223,20 +223,7 @@ export const EventCard = ({ event, onOpen, initialActive = false }: { event: Eve
         </div>
       </header>
 
-      {/* Volume toggle — left side, same vertical level as the right action rail */}
-      {isVideoActive && (
-        <button
-          onClick={() => setMuted((m) => !m)}
-          aria-label={muted ? "Unmute video" : "Mute video"}
-          className="absolute bottom-52 left-4 z-10 glass flex h-12 w-12 items-center justify-center rounded-full shadow-lg"
-        >
-          {muted
-            ? <VolumeX className="h-6 w-6 text-foreground" />
-            : <Volume2 className="h-6 w-6 text-foreground" />}
-        </button>
-      )}
-
-      {/* Action rail — raised so bookmark clears the CTA button */}
+      {/* Action rail — raised so bookmark clears the CTA button */
       <aside className="absolute bottom-52 right-4 z-10 flex flex-col items-end gap-5">
         {/* Upload / delete media controls (host only) — horizontal pair, right-aligned */}
         {isHost && currentMedia && (
@@ -312,10 +299,22 @@ export const EventCard = ({ event, onOpen, initialActive = false }: { event: Eve
       </aside>
 
       {/* Included items strip — sits below badge row which itself is below the Sektion header */}
-      {allItems.length > 0 && (
-        <div className="absolute inset-x-0 z-20 flex items-center gap-2 px-4"
-          style={{ top: "calc(max(3.75rem, env(safe-area-inset-top) + 2.5rem) + 3rem)" }}
-        >
+      <div className="absolute inset-x-0 z-30 flex items-center gap-2 px-4"
+        style={{ top: "calc(max(3.75rem, env(safe-area-inset-top) + 2.5rem) + 3rem)" }}
+      >
+        {/* Volume toggle — floats in the items strip row */}
+        {isVideoActive && (
+          <button
+            onClick={() => setMuted((m) => !m)}
+            aria-label={muted ? "Unmute video" : "Mute video"}
+            className="glass flex h-14 w-14 shrink-0 items-center justify-center rounded-xl shadow-lg pointer-events-auto"
+          >
+            {muted
+              ? <VolumeX className="h-6 w-6 text-foreground" />
+              : <Volume2 className="h-6 w-6 text-foreground" />}
+          </button>
+        )}
+        {allItems.length > 0 && (
           <div className="no-scrollbar flex flex-1 gap-2 overflow-x-auto">
             {allItems.slice(0, 6).map((item) => (
               <div
@@ -326,17 +325,15 @@ export const EventCard = ({ event, onOpen, initialActive = false }: { event: Eve
               </div>
             ))}
           </div>
-          {allItems.length > 0 && (
-            <button
-              onClick={() => setItemsOpen(true)}
-              className="glass flex h-14 w-9 shrink-0 items-center justify-center rounded-xl"
-              aria-label="View all included items"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      )}
+          <button
+            onClick={() => setItemsOpen(true)}
+            className="glass flex h-14 w-9 shrink-0 items-center justify-center rounded-xl"
+            aria-label="View all included items"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        )}
+      </div>
 
       {/* Bottom info */}
       <div className="absolute inset-x-0 bottom-0 z-10 px-5 pb-32">
