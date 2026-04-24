@@ -272,7 +272,7 @@ export const UploadSektionSheet = ({
                 </div>
                 <Field label="Category *">
                   <Select
-                    value={form.category}
+                    value={form.category || undefined}
                     onValueChange={(v) => set("category", v as Category)}
                   >
                     <SelectTrigger>
@@ -422,7 +422,7 @@ export const UploadSektionSheet = ({
                   <ReviewRow label="Date" value={`${form.date}${form.time ? " · " + form.time : ""}`} />
                   <ReviewRow label="Category" value={form.category} />
                   <ReviewRow label="Price" value={`£${form.pricePerSeat} / seat`} />
-                  <ReviewRow label="Seats" value={form.totalSeats} />
+                  <ReviewRow label="Seats" value={String(form.totalSeats)} />
                   {form.hostNote && <ReviewRow label="Note" value={form.hostNote} />}
                 </div>
                 <div>
