@@ -3,7 +3,7 @@ import { VibeTag } from "./VibeTag";
 import { SharersSheet } from "./SharersSheet";
 import { MediaCarousel } from "./MediaCarousel";
 import { MediaUploadSheet } from "./MediaUploadSheet";
-import { Bookmark, Heart, MapPin, MessageCircle, Play, Plus, Send, Trash2, Users, Zap, CheckCircle2, Clock, ShieldAlert, ChevronRight, ArrowLeft, ImagePlus, Camera } from "lucide-react";
+import { Bookmark, Heart, MapPin, MessageCircle, Play, Plus, Send, Trash2, Users, Zap, CheckCircle2, Clock, ShieldAlert, ChevronRight, ArrowLeft, ImagePlus, Camera, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useInventory } from "@/context/InventoryContext";
@@ -18,6 +18,13 @@ export const EventCard = ({ event, onOpen, initialActive = false }: { event: Eve
   const [saved, setSaved] = useState(false);
   const [sharersOpen, setSharersOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [muted, setMuted] = useState(true);
+  const [isVideoActive, setIsVideoActive] = useState(false);
+
+  // Reset video-active flag when card leaves viewport
+  useEffect(() => {
+    if (!active) setIsVideoActive(false);
+  }, [active]);
   const [itemsOpen, setItemsOpen] = useState(false);
   const [itemImages, setItemImages] = useState<Record<string, string>>({});
   const [editingItem, setEditingItem] = useState<IncludedItem | null>(null);
@@ -178,7 +185,12 @@ export const EventCard = ({ event, onOpen, initialActive = false }: { event: Eve
         onAdd={handleAdd}
         onRemove={handleRemove}
         onFlag={handleFlag}
-        onCurrentChange={setCurrentMedia}
+        onCurrentChange={(item) => {
+          setCurrentMedia(item);
+          setIsVideoActive(item?.kind === "video" && item.status === "approved" && active);
+        }}
+        muted={muted}
+        onMutedChange={setMuted}
       />
       <div className="absolute inset-0 bg-gradient-overlay pointer-events-none" />
       <div className="bg-gradient-radial absolute inset-x-0 top-0 h-1/2 opacity-60 pointer-events-none" />
@@ -210,6 +222,19 @@ export const EventCard = ({ event, onOpen, initialActive = false }: { event: Eve
           </span>
         </div>
       </header>
+
+      {/* Volume toggle — left side, same vertical level as the right action rail */}
+      {isVideoActive && (
+        <button
+          onClick={() => setMuted((m) => !m)}
+          aria-label={muted ? "Unmute video" : "Mute video"}
+          className="absolute bottom-52 left-4 z-10 glass flex h-12 w-12 items-center justify-center rounded-full shadow-lg"
+        >
+          {muted
+            ? <VolumeX className="h-6 w-6 text-foreground" />
+            : <Volume2 className="h-6 w-6 text-foreground" />}
+        </button>
+      )}
 
       {/* Action rail — raised so bookmark clears the CTA button */}
       <aside className="absolute bottom-52 right-4 z-10 flex flex-col items-end gap-5">

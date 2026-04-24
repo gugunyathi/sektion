@@ -1,23 +1,32 @@
 import { MediaItem } from "@/data/events";
 import { useEffect, useRef, useState, TouchEvent, KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
-import { Flag, Plus, Trash2, ShieldAlert, Play, CheckCircle2, Clock, Volume2, VolumeX } from "lucide-react";
+import { Flag, Plus, Trash2, ShieldAlert, Play, CheckCircle2, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 type Props = {
   media: MediaItem[];
-  active: boolean; // whether this card is the visible one (controls autoplay)
-  isHost?: boolean; // host gets upload/remove controls
+  active: boolean;
+  isHost?: boolean;
   onAdd?: () => void;
   onRemove?: (id: string) => void;
   onFlag?: (id: string) => void;
-  /** fires whenever the visible slide changes, so the parent can react */
+  /** fires whenever the visible slide changes */
   onCurrentChange?: (item: { id: string; kind: MediaItem["kind"]; status: MediaItem["status"] } | null) => void;
+  /** controlled mute state — if provided, carousel uses this instead of internal state */
+  muted?: boolean;
+  onMutedChange?: (muted: boolean) => void;
 };
 
-export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag, onCurrentChange }: Props) => {
+export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag, onCurrentChange, muted: mutedProp, onMutedChange }: Props) => {
   const [index, setIndex] = useState(0);
-  const [muted, setMuted] = useState(true);
+  const [internalMuted, setInternalMuted] = useState(true);
+  const muted = mutedProp !== undefined ? mutedProp : internalMuted;
+  const setMuted = (v: boolean | ((prev: boolean) => boolean)) => {
+    const next = typeof v === "function" ? v(muted) : v;
+    if (onMutedChange) onMutedChange(next);
+    else setInternalMuted(next);
+  };
   const trackRef = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
   const touchStartX = useRef<number | null>(null);
@@ -196,19 +205,6 @@ export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag, 
             <span className="text-[10px] font-semibold uppercase tracking-wider">Report</span>
           </button>
         </div>
-      )}
-
-      {/* Volume toggle — only shown when a video is active */}
-      {current?.kind === "video" && current.status === "approved" && active && (
-        <button
-          onClick={() => setMuted((m) => !m)}
-          aria-label={muted ? "Unmute video" : "Mute video"}
-          className="absolute left-4 top-14 z-[3] glass flex h-9 w-9 items-center justify-center rounded-full shadow-lg transition-opacity hover:opacity-90"
-        >
-          {muted
-            ? <VolumeX className="h-4 w-4 text-white" />
-            : <Volume2 className="h-4 w-4 text-white" />}
-        </button>
       )}
     </div>
   );
