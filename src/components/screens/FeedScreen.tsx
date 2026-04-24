@@ -32,7 +32,23 @@ export const FeedScreen = () => {
         const mockIds = new Set(EVENTS.map((e) => e.id));
         const fresh = events
           .filter((e) => !mockIds.has(e.id) && !mockIds.has(String(e._id)))
-          .map((e) => ({ ...e, id: e.id || String(e._id) }));
+          .map((e) => ({
+            // Provide safe defaults for all fields EventCard/BookingFlow expect
+            sharers: [],
+            image: "",
+            dateISO: e.date ?? "",
+            trending: false,
+            surge: false,
+            seatsLeft: 0,
+            totalSeats: 0,
+            pricePerSeat: 0,
+            hostNote: "",
+            time: "",
+            ...e,
+            id: e.id || String(e._id),
+            vibes: Array.isArray(e.vibes) ? e.vibes : [],
+            media: Array.isArray(e.media) ? e.media : [],
+          }));
         setApiEvents(fresh);
       })
       .catch(() => {/* silently ignore — offline or no DB */});

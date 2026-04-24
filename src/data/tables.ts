@@ -40,7 +40,7 @@ export type Table = {
 /** Deterministically derive 3 tables from an event so the UI is stable across renders. */
 export const getTablesForEvent = (event: Event): Table[] => {
   const base = Math.max(2, Math.ceil(event.totalSeats / 3));
-  const sharers = event.sharers;
+  const sharers = event.sharers ?? [];
 
   // Use event id hash to vary table types per event
   const variant = event.id.charCodeAt(event.id.length - 1) % 3;
