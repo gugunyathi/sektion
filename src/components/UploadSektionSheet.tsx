@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
@@ -86,8 +86,42 @@ export const UploadSektionSheet = ({
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const set = (key: keyof FormState, value: unknown) =>
+  const STORAGE_KEY = "sektion.upload.form";
+
+  // Load form from localStorage on mount and when sheet opens
+  useEffect(() => {
+    if (open) {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          setForm(JSON.parse(saved));
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    }
+  }, [open]);
+
+  // Save form to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [form]);
+
+  const set = (key: keyof FormState, value: unknown) => {
     setForm((p) => ({ ...p, [key]: value }));
+  };
+
+  const clearForm = () => {
+    setForm(EMPTY_FORM);
+    setMediaPreviews([]);
+    setStep(0);
+    localStorage.removeItem(STORAGE_KEY);
+    toast.success("Form cleared");
+  };
 
   const toggleVibe = (v: Vibe) =>
     set(
@@ -180,6 +214,7 @@ export const UploadSektionSheet = ({
 
       toast.success("Sektion uploaded! 🎉");
       onCreated(created);
+      clearForm(); // Clear saved form after successful upload
       handleClose();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Upload failed";
@@ -191,11 +226,9 @@ export const UploadSektionSheet = ({
 
   const handleClose = () => {
     if (submitting) return;
-    // Clean up object URLs
+    // Clean up object URLs but keep form data in localStorage
     mediaPreviews.forEach((m) => URL.revokeObjectURL(m.previewUrl));
     setMediaPreviews([]);
-    setForm(EMPTY_FORM);
-    setStep(0);
     onOpenChange(false);
   };
 
@@ -207,9 +240,19 @@ export const UploadSektionSheet = ({
         style={{ height: "92dvh" }}
       >
         <SheetHeader className="border-b border-white/10 px-5 py-4">
-          <SheetTitle className="text-gradient-vibe font-display text-lg font-black">
-            Upload Sektion
-          </SheetTitle>
+          <div className="flex items-center justify-between gap-2">
+            <SheetTitle className="text-gradient-vibe font-display text-lg font-black">
+              Upload Sektion
+            </SheetTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearForm}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              Clear
+            </Button>
+          </div>
           {/* Step indicator */}
           <div className="mt-2 flex items-center gap-1">
             {STEP_LABELS.map((label, i) => (
