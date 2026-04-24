@@ -173,6 +173,7 @@ export const EventCard = ({ event, onOpen, initialActive = false, muted: mutedPr
     setMedia((m) => m.filter((x) => x.id !== mediaId));
   };
   const handleFlag = async (id: string) => {
+    if (!event) return; // Guard: event not yet loaded
     const dbId = (event as unknown as { _id?: string })._id;
     if (dbId) {
       try {
