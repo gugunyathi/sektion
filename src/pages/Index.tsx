@@ -41,7 +41,7 @@ const Index = () => {
       {tab === "feed" && <FeedScreen />}
       {tab === "discover" && <DiscoverScreen />}
       {tab === "tableshare" && <TableShareScreen />}
-      {tab === "profile" && <ProfileScreen />}
+      {tab === "profile" && <ProfileScreen onOpenUpload={handleUploadClick} />}
       <HoldBanner />
       <BottomNav active={tab} onChange={setTab} onUpload={handleUploadClick} />
       <ProfileSetupSheet open={setupOpen} onOpenChange={setSetupOpen} />

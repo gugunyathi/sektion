@@ -6,7 +6,7 @@ const path = require('path');
 
 // ── GET /api/events ──────────────────────────────────────
 router.get('/', optionalAuth, async (req, res) => {
-  const { city, vibe, category, q, page = 1, limit = 20 } = req.query;
+  const { city, vibe, category, q, mine, page = 1, limit = 20 } = req.query;
   const filter = { isActive: true };
 
   if (city)     filter.city = { $regex: new RegExp(city, 'i') };
@@ -17,6 +17,10 @@ router.get('/', optionalAuth, async (req, res) => {
     { venue: { $regex: new RegExp(q, 'i') } },
     { city:  { $regex: new RegExp(q, 'i') } },
   ];
+  // Filter to current user's events only
+  if (mine === '1' && req.user) {
+    filter.createdBy = req.user._id;
+  }
 
   const skip = (Number(page) - 1) * Number(limit);
   const [events, total] = await Promise.all([

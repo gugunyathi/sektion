@@ -1,15 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   BadgeCheck,
   Bookmark,
   CalendarDays,
   Crown,
+  FileEdit,
   Flame,
   LogOut,
   Pencil,
   Settings,
   Trophy,
+  Upload,
   Utensils,
+  X,
   Zap,
 } from "lucide-react";
 import { VibeTag } from "../VibeTag";
@@ -19,6 +22,7 @@ import { Footer } from "../Footer";
 import { useBooking } from "@/context/BookingContext";
 import { useAuth } from "@/context/AuthContext";
 import { useBookmarks } from "@/context/BookmarksContext";
+import { api } from "@/lib/api";
 import a1 from "@/assets/avatar-1.jpg";
 import club from "@/assets/event-club.jpg";
 import dining from "@/assets/event-dining.jpg";
@@ -33,6 +37,154 @@ const BADGES = [
 ];
 
 const COLLAGE = [club, dining, themed, lounge, club, dining];
+
+/* ── Draft Section ───────────────────────────────────── */
+const DRAFT_KEY = "sektion.upload.form";
+
+interface DraftForm {
+  title?: string;
+  venue?: string;
+  city?: string;
+  date?: string;
+  category?: string;
+}
+
+function DraftSection({ onResume }: { onResume: () => void }) {
+  const [draft, setDraft] = useState<DraftForm | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const parsed: DraftForm = JSON.parse(raw);
+        // Only show if there's meaningful content
+        if (parsed.title || parsed.venue) {
+          setDraft(parsed);
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const clearDraft = () => {
+    localStorage.removeItem(DRAFT_KEY);
+    setDraft(null);
+  };
+
+  if (!draft) return null;
+
+  return (
+    <section className="mt-8 px-5">
+      <h2 className="font-display mb-3 text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+        <FileEdit className="h-4 w-4 text-amber-400" /> Draft
+      </h2>
+      <div className="glass rounded-2xl p-4 border border-amber-500/20 bg-amber-500/5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold truncate">{draft.title || "Untitled Sektion"}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {[draft.venue, draft.city, draft.date].filter(Boolean).join(" · ") || "No details yet"}
+            </p>
+            {draft.category && (
+              <span className="mt-2 inline-block rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold">
+                {draft.category}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={clearDraft}
+            className="text-muted-foreground hover:text-foreground p-1"
+            aria-label="Discard draft"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <button
+          onClick={onResume}
+          className="mt-3 w-full rounded-xl bg-amber-500/20 border border-amber-500/30 py-2 text-xs font-bold text-amber-300 hover:bg-amber-500/30 transition-colors"
+        >
+          Continue Editing
+        </button>
+      </div>
+    </section>
+  );
+}
+
+/* ── My Sektions Section ─────────────────────────────── */
+interface ApiEvent {
+  _id: string;
+  id?: string;
+  title: string;
+  venue?: string;
+  city?: string;
+  date?: string;
+  category?: string;
+  media?: { src: string; kind: string }[];
+  createdAt?: string;
+}
+
+function MySektionsSection() {
+  const { user, isAuthed } = useAuth();
+  const [events, setEvents] = useState<ApiEvent[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthed) return;
+    setLoading(true);
+    api.get<{ events: ApiEvent[] }>("/api/events?mine=1&limit=50")
+      .then(({ events: all }) => {
+        setEvents(all.slice(0, 20));
+      })
+      .catch(() => {/* silently ignore */})
+      .finally(() => setLoading(false));
+  }, [isAuthed]);
+
+  if (!isAuthed) return null;
+  if (!loading && events.length === 0) return null;
+
+  return (
+    <section className="mt-8 px-5">
+      <h2 className="font-display mb-3 text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+        <Upload className="h-4 w-4 text-blue-400" /> My Sektions
+        {events.length > 0 && <span className="text-muted-foreground font-normal normal-case tracking-normal text-xs">· {events.length}</span>}
+      </h2>
+      {loading ? (
+        <div className="flex gap-3 overflow-x-auto -mx-5 px-5 pb-2 no-scrollbar">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="shrink-0 w-36 h-44 glass rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <div className="no-scrollbar -mx-5 flex gap-3 overflow-x-auto px-5 pb-2">
+          {events.map((e) => {
+            const cover = e.media?.find((m) => m.kind === "image")?.src ?? e.media?.[0]?.src;
+            return (
+              <div key={e._id} className="shrink-0 w-36 glass rounded-2xl overflow-hidden">
+                {cover ? (
+                  <img src={cover} alt={e.title} className="h-20 w-full object-cover" loading="lazy" width={144} height={80} />
+                ) : (
+                  <div className="h-20 w-full bg-gradient-to-br from-blue-900/40 to-purple-900/40 flex items-center justify-center">
+                    <Upload className="h-6 w-6 text-white/30" />
+                  </div>
+                )}
+                <div className="p-2">
+                  <p className="text-xs font-bold leading-tight line-clamp-2">{e.title}</p>
+                  {e.venue && <p className="text-[10px] text-muted-foreground truncate mt-0.5">{e.venue}</p>}
+                  {e.category && (
+                    <span className="mt-1 inline-block rounded-full bg-blue-500/15 px-1.5 py-0.5 text-[9px] font-bold text-blue-400">
+                      {e.category}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
 
 /* ── Saved/Bookmarks panel ───────────────────────────── */
 function SavedSection() {
@@ -94,7 +246,7 @@ function SavedSection() {
 }
 
 /* ── Main component ──────────────────────────────────── */
-export const ProfileScreen = () => {
+export const ProfileScreen = ({ onOpenUpload }: { onOpenUpload?: () => void }) => {
   const [bookingsOpen, setBookingsOpen] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
   const { bookingHistory } = useBooking();
@@ -214,6 +366,12 @@ export const ProfileScreen = () => {
         )}
       </button>
     </div>
+
+    {/* Draft sektion */}
+    <DraftSection onResume={() => onOpenUpload?.()} />
+
+    {/* User uploaded sektions */}
+    <MySektionsSection />
 
     {/* Saved / Bookmarks */}
     <SavedSection />
