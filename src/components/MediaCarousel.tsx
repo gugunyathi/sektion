@@ -1,7 +1,7 @@
 import { MediaItem } from "@/data/events";
 import { useEffect, useRef, useState, TouchEvent, KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
-import { Flag, Plus, Trash2, ShieldAlert, Play, CheckCircle2, Clock } from "lucide-react";
+import { Flag, Plus, Trash2, ShieldAlert, Play, CheckCircle2, Clock, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 
 type Props = {
@@ -17,6 +17,7 @@ type Props = {
 
 export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag, onCurrentChange }: Props) => {
   const [index, setIndex] = useState(0);
+  const [muted, setMuted] = useState(true);
   const trackRef = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
   const touchStartX = useRef<number | null>(null);
@@ -38,26 +39,27 @@ export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag, 
     onCurrentChange?.(current ? { id: current.id, kind: current.kind, status: current.status } : null);
   }, [current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Autoplay current video immediately when active; unmute after play starts
+  // Autoplay current video muted; apply mute state
   useEffect(() => {
     Object.entries(videoRefs.current).forEach(([id, vid]) => {
       if (!vid) return;
       const isTarget = active && current && id === current.id && current.kind === "video" && current.status === "approved";
       if (isTarget) {
-        // Start muted so browsers allow autoplay, then unmute once playing
-        vid.muted = true;
+        vid.muted = muted;
         const playPromise = vid.play();
         if (playPromise !== undefined) {
-          playPromise
-            .then(() => { vid.muted = false; })
-            .catch(() => { /* autoplay blocked — stay muted */ });
+          playPromise.catch(() => {
+            // Autoplay blocked — stay muted and try again muted
+            vid.muted = true;
+            vid.play().catch(() => {});
+          });
         }
       } else {
         vid.pause();
         vid.muted = true;
       }
     });
-  }, [active, current]);
+  }, [active, current, muted]);
 
   const go = (next: number) => {
     if (sorted.length === 0) return;
@@ -194,6 +196,19 @@ export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag, 
             <span className="text-[10px] font-semibold uppercase tracking-wider">Report</span>
           </button>
         </div>
+      )}
+
+      {/* Volume toggle — only shown when a video is active */}
+      {current?.kind === "video" && current.status === "approved" && active && (
+        <button
+          onClick={() => setMuted((m) => !m)}
+          aria-label={muted ? "Unmute video" : "Mute video"}
+          className="absolute left-4 top-14 z-[3] glass flex h-9 w-9 items-center justify-center rounded-full shadow-lg transition-opacity hover:opacity-90"
+        >
+          {muted
+            ? <VolumeX className="h-4 w-4 text-white" />
+            : <Volume2 className="h-4 w-4 text-white" />}
+        </button>
       )}
     </div>
   );
