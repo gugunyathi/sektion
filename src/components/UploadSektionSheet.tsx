@@ -144,7 +144,25 @@ export const UploadSektionSheet = ({
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      // Step 1: create the event (no media yet)
+      // Step 1: upload each media file to Cloudinary and collect URLs
+      const mediaUrls: string[] = [];
+      for (const mp of mediaPreviews) {
+        const fd = new FormData();
+        fd.append("file", mp.file);
+        fd.append("upload_preset", "sektion");
+        
+        const res = await fetch("https://api.cloudinary.com/v1_1/dkfoqidrv/auto/upload", {
+          method: "POST",
+          body: fd,
+        });
+        
+        if (!res.ok) throw new Error(`Cloudinary upload failed: ${res.statusText}`);
+        const data = await res.json() as { secure_url?: string };
+        if (!data.secure_url) throw new Error("No URL returned from Cloudinary");
+        mediaUrls.push(data.secure_url);
+      }
+
+      // Step 2: create the event with media URLs
       const created = await api.post<Record<string, unknown>>("/api/events", {
         title: form.title.trim(),
         venue: form.venue.trim(),
@@ -157,17 +175,8 @@ export const UploadSektionSheet = ({
         totalSeats: Number(form.totalSeats),
         seatsLeft: Number(form.totalSeats),
         hostNote: form.hostNote.trim(),
+        mediaUrls,
       });
-
-      const eventId = (created as { _id?: string; id?: string })._id ?? (created as { id?: string }).id;
-      if (!eventId) throw new Error("No event ID returned");
-
-      // Step 2: upload each media file
-      for (const mp of mediaPreviews) {
-        const fd = new FormData();
-        fd.append("media", mp.file);
-        await api.upload(`/api/events/${eventId}/media/upload`, fd);
-      }
 
       toast.success("Sektion uploaded! 🎉");
       onCreated(created);

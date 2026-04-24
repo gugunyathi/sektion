@@ -33,6 +33,7 @@ router.post('/', requireAuth, async (req, res) => {
   const {
     title, venue, city, date, time, category, vibes,
     pricePerSeat, totalSeats, seatsLeft, hostNote, trending, surge,
+    mediaUrls,
   } = req.body;
 
   if (!title || !venue || !city || !date || !category) {
@@ -45,6 +46,16 @@ router.post('/', requireAuth, async (req, res) => {
   }
 
   const slug = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`;
+
+  // Convert mediaUrls to media array items
+  const media = (Array.isArray(mediaUrls) ? mediaUrls : []).map((url, idx) => ({
+    id: `m-${Date.now()}-${idx}`,
+    kind: url.includes('video') || url.endsWith('.mp4') || url.endsWith('.mov') ? 'video' : 'image',
+    src: url,
+    uploadedBy: String(req.user._id),
+    status: 'pending',
+    flags: 0,
+  }));
 
   const event = await Event.create({
     slug,
@@ -61,6 +72,7 @@ router.post('/', requireAuth, async (req, res) => {
     hostNote: (hostNote || '').trim(),
     trending: Boolean(trending),
     surge: Boolean(surge),
+    media,
     isActive: true,
     createdBy: req.user._id,
   });
