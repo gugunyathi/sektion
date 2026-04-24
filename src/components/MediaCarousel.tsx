@@ -4,6 +4,19 @@ import { cn } from "@/lib/utils";
 import { Flag, Plus, Trash2, ShieldAlert, Play, CheckCircle2, Clock } from "lucide-react";
 import { toast } from "sonner";
 
+/** Inject Cloudinary auto-quality + auto-format transformations for faster delivery */
+function optimizeCloudinaryUrl(src: string, kind: "video" | "image"): string {
+  // Matches Cloudinary upload URLs: .../upload/[optional-transforms/]public_id
+  const match = src.match(/^(https:\/\/res\.cloudinary\.com\/[^/]+\/(image|video)\/upload\/)(.+)$/);
+  if (!match) return src;
+  const base = match[1];
+  const rest = match[3];
+  // Don't double-inject if transforms already present
+  if (rest.startsWith("q_auto") || rest.startsWith("f_auto")) return src;
+  const transforms = kind === "video" ? "q_auto,f_auto,vc_auto" : "q_auto,f_auto";
+  return `${base}${transforms}/${rest}`;
+}
+
 type Props = {
   media: MediaItem[];
   active: boolean;
@@ -137,20 +150,20 @@ export const MediaCarousel = ({ media, active, isHost, onAdd, onRemove, onFlag, 
               {m.kind === "video" ? (
                 <video
                   ref={(el) => { videoRefs.current[m.id] = el; }}
-                  src={m.src}
+                  src={optimizeCloudinaryUrl(m.src, "video")}
                   poster={m.poster}
                   className="absolute inset-0 h-full w-full object-cover"
-                  muted
+                  muted={muted}
                   loop
                   playsInline
-                  preload={i === safeIndex ? "auto" : "metadata"}
+                  preload={Math.abs(i - safeIndex) <= 1 ? "auto" : "metadata"}
                 />
               ) : (
                 <img
-                  src={m.src}
+                  src={optimizeCloudinaryUrl(m.src, "image")}
                   alt={m.caption ?? "Event media"}
                   className="absolute inset-0 h-full w-full object-cover"
-                  loading="lazy"
+                  loading={i === safeIndex ? "eager" : "lazy"}
                 />
               )}
               {frozen && (

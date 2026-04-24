@@ -27,17 +27,11 @@ export const EventCard = ({ event, onOpen, initialActive = false }: { event: Eve
   const [currentMedia, setCurrentMedia] = useState<{ id: string; kind: MediaItem["kind"]; status: MediaItem["status"] } | null>(null);
   const [active, setActive] = useState(initialActive);
   const [muted, setMuted] = useState(true);
-  const [isVideoActive, setIsVideoActive] = useState(false);
   const articleRef = useRef<HTMLElement>(null);
   const itemFileRef = useRef<HTMLInputElement>(null);
   const { seatsLeftForEvent } = useInventory();
   const { user } = useAuth();
   const seatsLeft = seatsLeftForEvent(event.id);
-
-  // Reset video-active flag when card leaves viewport
-  useEffect(() => {
-    if (!active) setIsVideoActive(false);
-  }, [active]);
 
   // Gather included items from all tables for this event
   const allItems: IncludedItem[] = (() => {
@@ -187,7 +181,6 @@ export const EventCard = ({ event, onOpen, initialActive = false }: { event: Eve
         onFlag={handleFlag}
         onCurrentChange={(item) => {
           setCurrentMedia(item);
-          setIsVideoActive(item?.kind === "video" && item.status === "approved" && active);
         }}
         muted={muted}
         onMutedChange={setMuted}
@@ -302,8 +295,8 @@ export const EventCard = ({ event, onOpen, initialActive = false }: { event: Eve
       <div className="absolute inset-x-0 z-30 flex items-center gap-2 px-4"
         style={{ top: "calc(max(3.75rem, env(safe-area-inset-top) + 2.5rem) + 3rem)" }}
       >
-        {/* Volume toggle — floats in the items strip row */}
-        {isVideoActive && (
+        {/* Volume toggle — floats in the items strip row, shown whenever a video slide is active */}
+        {currentMedia?.kind === "video" && currentMedia?.status === "approved" && (
           <button
             onClick={() => setMuted((m) => !m)}
             aria-label={muted ? "Unmute video" : "Mute video"}

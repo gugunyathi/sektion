@@ -32,6 +32,7 @@ export const FeedScreen = ({ refreshKey = 0 }: { refreshKey?: number }) => {
         const mockIds = new Set(EVENTS.map((e) => e.id));
         const fresh = events
           .filter((e) => !mockIds.has(e.id) && !mockIds.has(String(e._id)))
+          .sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())
           .map((e) => ({
             // Provide safe defaults for all fields EventCard/BookingFlow expect
             sharers: [],
