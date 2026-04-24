@@ -51,13 +51,13 @@ router.post('/', requireAuth, async (req, res) => {
 
   const slug = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`;
 
-  // Convert mediaUrls to media array items
+  // Convert mediaUrls to media array items — approved so they show immediately in feed
   const media = (Array.isArray(mediaUrls) ? mediaUrls : []).map((url, idx) => ({
     id: `m-${Date.now()}-${idx}`,
     kind: url.includes('video') || url.endsWith('.mp4') || url.endsWith('.mov') ? 'video' : 'image',
     src: url,
     uploadedBy: String(req.user._id),
-    status: 'pending',
+    status: 'approved',
     flags: 0,
   }));
 
@@ -201,6 +201,18 @@ router.patch('/:id', requireAuth, async (req, res) => {
   const patch = {};
   for (const key of allowed) {
     if (key in req.body) patch[key] = req.body[key];
+  }
+
+  // Replace media when mediaUrls array provided
+  if (Array.isArray(req.body.mediaUrls)) {
+    patch.media = req.body.mediaUrls.map((url, idx) => ({
+      id: `m-${Date.now()}-${idx}`,
+      kind: url.includes('video') || url.endsWith('.mp4') || url.endsWith('.mov') ? 'video' : 'image',
+      src: url,
+      uploadedBy: String(req.user._id),
+      status: 'approved',
+      flags: 0,
+    }));
   }
 
   const updated = await Event.findByIdAndUpdate(req.params.id, patch, { new: true });

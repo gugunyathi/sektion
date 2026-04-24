@@ -9,7 +9,7 @@ import { api } from "@/lib/api";
 
 const GATE_AFTER = 4; // show auth gate after scrolling past this many cards
 
-export const FeedScreen = () => {
+export const FeedScreen = ({ refreshKey = 0 }: { refreshKey?: number }) => {
   const { isAuthed, requireAuth } = useAuth();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Event | null>(null);
@@ -24,7 +24,7 @@ export const FeedScreen = () => {
     () => Object.fromEntries(EVENTS.map((e) => [e.id, e.media ?? []]))
   );
 
-  // Load user-created events from the API on mount
+  // Load user-created events from the API on mount (re-runs when refreshKey changes)
   useEffect(() => {
     api.get<{ events: (Event & { _id: string; createdAt: string })[] }>("/api/events?limit=50")
       .then(({ events }) => {
@@ -52,7 +52,7 @@ export const FeedScreen = () => {
         setApiEvents(fresh);
       })
       .catch(() => {/* silently ignore — offline or no DB */});
-  }, []);
+  }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Merge: API events (newest) then mock events
   const allEvents: Event[] = [...apiEvents, ...EVENTS];

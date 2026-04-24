@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   BadgeCheck,
   Bookmark,
@@ -6,6 +6,7 @@ import {
   Crown,
   FileEdit,
   Flame,
+  ImagePlus,
   LogOut,
   MoreVertical,
   Pencil,
@@ -128,6 +129,12 @@ function DraftSection({ onResume }: { onResume: () => void }) {
 }
 
 /* ── My Sektions Section ─────────────────────────────── */
+const CLOUDINARY_CLOUD = "dkfoqidrv";
+const CLOUDINARY_PRESET = "sektion";
+const CATEGORIES = ["Club", "Dining", "Lounge", "Rave", "Themed"] as const;
+const VIBE_OPTIONS = ["Party Animal", "Luxe", "Foodie", "Chill", "Rave", "Social", "Romantic", "LGBTQ+", "Networking"];
+
+interface ApiMedia { src: string; kind: string; id?: string; }
 interface ApiEvent {
   _id: string;
   id?: string;
@@ -135,8 +142,13 @@ interface ApiEvent {
   venue?: string;
   city?: string;
   date?: string;
+  time?: string;
   category?: string;
-  media?: { src: string; kind: string }[];
+  vibes?: string[];
+  pricePerSeat?: number;
+  totalSeats?: number;
+  hostNote?: string;
+  media?: ApiMedia[];
   createdAt?: string;
 }
 
@@ -146,6 +158,10 @@ interface EditForm {
   city: string;
   date: string;
   time: string;
+  category: string;
+  vibes: string[];
+  pricePerSeat: string;
+  totalSeats: string;
   hostNote: string;
 }
 
@@ -156,14 +172,17 @@ function MySektionsSection() {
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ApiEvent | null>(null);
   const [editTarget, setEditTarget] = useState<ApiEvent | null>(null);
-  const [editForm, setEditForm] = useState<EditForm>({ title: "", venue: "", city: "", date: "", time: "", hostNote: "" });
+  const [editForm, setEditForm] = useState<EditForm>({ title: "", venue: "", city: "", date: "", time: "", category: "", vibes: [], pricePerSeat: "", totalSeats: "", hostNote: "" });
+  const [editMedia, setEditMedia] = useState<ApiMedia[]>([]);
   const [saving, setSaving] = useState(false);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const mediaFileRef = useRef<HTMLInputElement>(null);
 
   const load = () => {
     if (!isAuthed) return;
     setLoading(true);
     api.get<{ events: ApiEvent[] }>("/api/events?mine=1&limit=50")
-      .then(({ events: all }) => setEvents(all.slice(0, 20)))
+      .then(({ events: all }) => setEvents(all.slice(0, 50)))
       .catch(() => {})
       .finally(() => setLoading(false));
   };
@@ -176,18 +195,54 @@ function MySektionsSection() {
       venue: e.venue ?? "",
       city: e.city ?? "",
       date: e.date ?? "",
-      time: "",
-      hostNote: "",
+      time: e.time ?? "",
+      category: e.category ?? "",
+      vibes: Array.isArray(e.vibes) ? e.vibes : [],
+      pricePerSeat: e.pricePerSeat != null ? String(e.pricePerSeat) : "",
+      totalSeats: e.totalSeats != null ? String(e.totalSeats) : "",
+      hostNote: e.hostNote ?? "",
     });
+    setEditMedia(Array.isArray(e.media) ? e.media : []);
     setEditTarget(e);
     setMenuOpenId(null);
   };
+
+  const toggleVibe = (v: string) =>
+    setEditForm((f) => ({
+      ...f,
+      vibes: f.vibes.includes(v) ? f.vibes.filter((x) => x !== v) : [...f.vibes, v],
+    }));
+
+  const handleAddMedia = async (file: File) => {
+    setUploadingMedia(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("upload_preset", CLOUDINARY_PRESET);
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/auto/upload`, { method: "POST", body: fd });
+      const json = await res.json();
+      if (!json.secure_url) throw new Error("Upload failed");
+      const newItem: ApiMedia = { src: json.secure_url, kind: file.type.startsWith("video") ? "video" : "image", id: `m-${Date.now()}` };
+      setEditMedia((m) => [...m, newItem]);
+    } catch {
+      toast.error("Media upload failed");
+    } finally {
+      setUploadingMedia(false);
+    }
+  };
+
+  const handleRemoveMedia = (idx: number) => setEditMedia((m) => m.filter((_, i) => i !== idx));
 
   const handleSave = async () => {
     if (!editTarget) return;
     setSaving(true);
     try {
-      await api.patch(`/api/events/${editTarget._id}`, editForm);
+      await api.patch(`/api/events/${editTarget._id}`, {
+        ...editForm,
+        pricePerSeat: Number(editForm.pricePerSeat) || 0,
+        totalSeats: Number(editForm.totalSeats) || 0,
+        mediaUrls: editMedia.map((m) => m.src),
+      });
       toast.success("Sektion updated");
       setEditTarget(null);
       load();
@@ -200,14 +255,15 @@ function MySektionsSection() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
+    const id = deleteTarget._id;
+    setDeleteTarget(null); // close dialog immediately
+    setEvents((prev) => prev.filter((e) => e._id !== id)); // remove from UI immediately
     try {
-      await api.delete(`/api/events/${deleteTarget._id}`);
+      await api.delete(`/api/events/${id}`);
       toast.success("Sektion removed from feed");
-      setEvents((prev) => prev.filter((e) => e._id !== deleteTarget._id));
     } catch {
       toast.error("Failed to remove sektion");
-    } finally {
-      setDeleteTarget(null);
+      load(); // reload to restore on error
     }
   };
 
@@ -241,7 +297,6 @@ function MySektionsSection() {
                       <Upload className="h-6 w-6 text-white/30" />
                     </div>
                   )}
-                  {/* 3-dot menu button */}
                   <button
                     onClick={() => setMenuOpenId(isMenuOpen ? null : e._id)}
                     className="absolute top-1 right-1 z-10 h-7 w-7 flex items-center justify-center rounded-full bg-black/50 backdrop-blur-sm"
@@ -249,19 +304,12 @@ function MySektionsSection() {
                   >
                     <MoreVertical className="h-3.5 w-3.5 text-white" />
                   </button>
-                  {/* Dropdown menu */}
                   {isMenuOpen && (
                     <div className="absolute top-8 right-1 z-20 glass rounded-xl overflow-hidden min-w-[120px] shadow-xl border border-white/10">
-                      <button
-                        onClick={() => openEdit(e)}
-                        className="flex w-full items-center gap-2 px-3 py-2.5 text-xs font-semibold hover:bg-white/10 transition-colors"
-                      >
+                      <button onClick={() => openEdit(e)} className="flex w-full items-center gap-2 px-3 py-2.5 text-xs font-semibold hover:bg-white/10 transition-colors">
                         <Pencil className="h-3.5 w-3.5 text-blue-400" /> Edit
                       </button>
-                      <button
-                        onClick={() => { setDeleteTarget(e); setMenuOpenId(null); }}
-                        className="flex w-full items-center gap-2 px-3 py-2.5 text-xs font-semibold hover:bg-white/10 transition-colors text-red-400"
-                      >
+                      <button onClick={() => { setDeleteTarget(e); setMenuOpenId(null); }} className="flex w-full items-center gap-2 px-3 py-2.5 text-xs font-semibold hover:bg-white/10 transition-colors text-red-400">
                         <Trash2 className="h-3.5 w-3.5" /> Delete
                       </button>
                     </div>
@@ -270,9 +318,7 @@ function MySektionsSection() {
                     <p className="text-xs font-bold leading-tight line-clamp-2">{e.title}</p>
                     {e.venue && <p className="text-[10px] text-muted-foreground truncate mt-0.5">{e.venue}</p>}
                     {e.category && (
-                      <span className="mt-1 inline-block rounded-full bg-blue-500/15 px-1.5 py-0.5 text-[9px] font-bold text-blue-400">
-                        {e.category}
-                      </span>
+                      <span className="mt-1 inline-block rounded-full bg-blue-500/15 px-1.5 py-0.5 text-[9px] font-bold text-blue-400">{e.category}</span>
                     )}
                   </div>
                 </div>
@@ -282,29 +328,126 @@ function MySektionsSection() {
         )}
       </section>
 
-      {/* Edit Sheet */}
+      {/* ── Full Edit Sheet ── */}
       <Sheet open={!!editTarget} onOpenChange={(o) => !o && setEditTarget(null)}>
-        <SheetContent side="bottom" className="rounded-t-3xl max-h-[90dvh] overflow-y-auto">
+        <SheetContent side="bottom" className="rounded-t-3xl max-h-[92dvh] overflow-y-auto">
           <SheetHeader className="mb-4">
             <SheetTitle>Edit Sektion</SheetTitle>
           </SheetHeader>
-          <div className="space-y-4 pb-6">
-            {(["title", "venue", "city", "date", "time", "hostNote"] as (keyof EditForm)[]).map((field) => (
+          <div className="space-y-4 pb-8">
+            {/* Text fields */}
+            {([
+              { field: "title", label: "Title", type: "text" },
+              { field: "venue", label: "Venue", type: "text" },
+              { field: "city", label: "City", type: "text" },
+              { field: "date", label: "Date", type: "date" },
+              { field: "time", label: "Time", type: "time" },
+            ] as { field: keyof EditForm; label: string; type: string }[]).map(({ field, label, type }) => (
               <div key={field} className="space-y-1.5">
-                <Label htmlFor={`edit-${field}`} className="capitalize text-xs">{field === "hostNote" ? "Host Note" : field}</Label>
+                <Label htmlFor={`edit-${field}`} className="text-xs font-semibold">{label}</Label>
                 <Input
                   id={`edit-${field}`}
-                  value={editForm[field]}
+                  value={editForm[field] as string}
                   onChange={(ev) => setEditForm((f) => ({ ...f, [field]: ev.target.value }))}
-                  type={field === "date" ? "date" : "text"}
+                  type={type}
                   className="glass border-white/10"
                 />
               </div>
             ))}
+
+            {/* Category */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Category</Label>
+              <div className="flex flex-wrap gap-2">
+                {CATEGORIES.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setEditForm((f) => ({ ...f, category: c }))}
+                    className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${editForm.category === c ? "bg-blue-500 text-white" : "glass text-muted-foreground hover:bg-white/10"}`}
+                  >{c}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Vibes */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Vibes</Label>
+              <div className="flex flex-wrap gap-2">
+                {VIBE_OPTIONS.map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => toggleVibe(v)}
+                    className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${editForm.vibes.includes(v) ? "bg-gradient-primary text-white shadow-neon" : "glass text-muted-foreground hover:bg-white/10"}`}
+                  >{v}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Pricing */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Price per seat ($)</Label>
+                <Input value={editForm.pricePerSeat} onChange={(ev) => setEditForm((f) => ({ ...f, pricePerSeat: ev.target.value }))} type="number" min="0" className="glass border-white/10" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Total seats</Label>
+                <Input value={editForm.totalSeats} onChange={(ev) => setEditForm((f) => ({ ...f, totalSeats: ev.target.value }))} type="number" min="1" className="glass border-white/10" />
+              </div>
+            </div>
+
+            {/* Host note */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Host Note</Label>
+              <textarea
+                value={editForm.hostNote}
+                onChange={(ev) => setEditForm((f) => ({ ...f, hostNote: ev.target.value }))}
+                rows={3}
+                className="glass border border-white/10 w-full rounded-xl px-3 py-2 text-sm bg-transparent resize-none outline-none focus:ring-1 focus:ring-white/20"
+                placeholder="Tell guests what to expect…"
+              />
+            </div>
+
+            {/* Media management */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Media</Label>
+              <div className="flex flex-wrap gap-2">
+                {editMedia.map((m, i) => (
+                  <div key={i} className="relative h-20 w-20 rounded-xl overflow-hidden glass">
+                    {m.kind === "video"
+                      ? <video src={m.src} className="h-full w-full object-cover" muted />
+                      : <img src={m.src} alt="" className="h-full w-full object-cover" />}
+                    <button
+                      onClick={() => handleRemoveMedia(i)}
+                      className="absolute top-1 right-1 h-5 w-5 flex items-center justify-center rounded-full bg-black/70"
+                      aria-label="Remove media"
+                    >
+                      <X className="h-3 w-3 text-white" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => mediaFileRef.current?.click()}
+                  disabled={uploadingMedia}
+                  className="h-20 w-20 glass rounded-xl flex flex-col items-center justify-center gap-1 text-muted-foreground hover:bg-white/10 transition-colors disabled:opacity-50"
+                >
+                  {uploadingMedia ? <span className="text-[10px]">Uploading…</span> : <><ImagePlus className="h-5 w-5" /><span className="text-[10px]">Add</span></>}
+                </button>
+                <input
+                  ref={mediaFileRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  className="hidden"
+                  onChange={(ev) => { const f = ev.target.files?.[0]; if (f) handleAddMedia(f); ev.target.value = ""; }}
+                />
+              </div>
+            </div>
+
             <button
               onClick={handleSave}
               disabled={saving || !editForm.title.trim()}
-              className="w-full rounded-2xl bg-gradient-primary py-3 text-sm font-bold shadow-neon disabled:opacity-50 mt-2"
+              className="w-full rounded-2xl bg-gradient-primary py-3 text-sm font-bold shadow-neon disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save Changes"}
             </button>
@@ -312,7 +455,7 @@ function MySektionsSection() {
         </SheetContent>
       </Sheet>
 
-      {/* Delete Confirm */}
+      {/* ── Delete Confirm ── */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -323,9 +466,7 @@ function MySektionsSection() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white">
-              Remove
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white">Remove</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
