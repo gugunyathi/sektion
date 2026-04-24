@@ -94,10 +94,17 @@ export const UploadSektionSheet = ({
       try {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
-          setForm(JSON.parse(saved));
+          const parsed = JSON.parse(saved);
+          // Merge with defaults to ensure all fields exist
+          setForm({
+            ...EMPTY_FORM,
+            ...parsed,
+            vibes: Array.isArray(parsed.vibes) ? parsed.vibes : [],
+          });
         }
       } catch {
-        // Ignore parse errors
+        // Ignore parse errors, keep default form
+        setForm(EMPTY_FORM);
       }
     }
   }, [open]);
