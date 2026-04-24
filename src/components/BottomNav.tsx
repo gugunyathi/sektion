@@ -21,8 +21,8 @@ export const BottomNav = ({
   onChange: (t: Tab) => void;
   onUpload: () => void;
 }) => (
-  <nav className="glass-dark fixed inset-x-0 bottom-0 z-50 mx-auto flex max-w-md items-center justify-around px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
-    {/* Left tabs */}
+  <nav className="glass-dark fixed inset-x-0 bottom-0 z-50 mx-auto grid max-w-md grid-cols-5 items-end px-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
+    {/* Feed */}
     {LEFT_TABS.map(({ id, label, icon: Icon }) => {
       const isActive = active === id;
       return (
@@ -30,7 +30,7 @@ export const BottomNav = ({
           key={id}
           onClick={() => onChange(id)}
           className={cn(
-            "flex flex-1 flex-col items-center gap-1 py-2 transition-colors",
+            "flex flex-col items-center gap-1 py-2 transition-colors",
             isActive ? "text-primary-glow" : "text-muted-foreground hover:text-foreground",
           )}
           aria-label={label}
@@ -41,13 +41,13 @@ export const BottomNav = ({
       );
     })}
 
-    {/* Center: TableShare */}
+    {/* Center: TableShare — elevated pill */}
     <button
       onClick={() => onChange("tableshare")}
-      className="relative -mt-6 flex flex-col items-center"
+      className="flex flex-col items-center -mb-1"
       aria-label="TableShare"
     >
-      <span className="bg-gradient-primary shadow-neon flex h-14 w-14 items-center justify-center rounded-full">
+      <span className="bg-gradient-primary shadow-neon -mt-7 flex h-14 w-14 items-center justify-center rounded-full">
         <Sparkles className="h-6 w-6 text-primary-foreground" strokeWidth={2.5} />
       </span>
       <span className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-foreground/80">
@@ -55,21 +55,21 @@ export const BottomNav = ({
       </span>
     </button>
 
-    {/* Upload button */}
+    {/* Upload */}
     <button
       onClick={onUpload}
-      className="relative -mt-3 flex flex-col items-center"
+      className="flex flex-col items-center gap-1 py-2"
       aria-label="Upload Sektion"
     >
       <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 shadow-lg shadow-blue-600/40">
         <Upload className="h-5 w-5 text-white" strokeWidth={2.5} />
       </span>
-      <span className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-blue-400">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-400">
         Upload
       </span>
     </button>
 
-    {/* Right tabs */}
+    {/* You */}
     {RIGHT_TABS.map(({ id, label, icon: Icon }) => {
       const isActive = active === id;
       return (
@@ -77,7 +77,7 @@ export const BottomNav = ({
           key={id}
           onClick={() => onChange(id)}
           className={cn(
-            "flex flex-1 flex-col items-center gap-1 py-2 transition-colors",
+            "flex flex-col items-center gap-1 py-2 transition-colors",
             isActive ? "text-primary-glow" : "text-muted-foreground hover:text-foreground",
           )}
           aria-label={label}
