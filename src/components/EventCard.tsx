@@ -7,6 +7,8 @@ import { Bookmark, Heart, MapPin, MessageCircle, Play, Plus, Send, Trash2, Users
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useInventory } from "@/context/InventoryContext";
+import { useAuth } from "@/context/AuthContext";
+import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { getTablesForEvent, IncludedItem } from "@/data/tables";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -27,6 +29,7 @@ export const EventCard = ({ event, onOpen, initialActive = false }: { event: Eve
   const articleRef = useRef<HTMLElement>(null);
   const itemFileRef = useRef<HTMLInputElement>(null);
   const { seatsLeftForEvent } = useInventory();
+  const { user } = useAuth();
   const seatsLeft = seatsLeftForEvent(event.id);
 
   // Gather included items from all tables for this event
@@ -40,8 +43,12 @@ export const EventCard = ({ event, onOpen, initialActive = false }: { event: Eve
     });
   })();
 
-  // Mock: pretend the current user hosts a couple of events so upload/remove controls show
-  const isHost = event.id === "e1" || event.id === "e3";
+  // Check if the current user is the owner of this event
+  const isHost = Boolean(
+    user?.id && (event as unknown as { createdBy?: string }).createdBy
+      ? String((event as unknown as { createdBy?: string }).createdBy) === user.id
+      : event.id === "e1" || event.id === "e3" // fallback for seeded mock events
+  );
 
   // Moderation status reflects only the currently visible slide
   const getModerationStatus = () => {
@@ -66,16 +73,35 @@ export const EventCard = ({ event, onOpen, initialActive = false }: { event: Eve
     setUploadOpen(true);
   };
 
-  const handleMediaUpload = (
+  const handleMediaUpload = async (
     newMedia: Omit<MediaItem, "id" | "uploadedBy" | "status" | "flags">
   ) => {
+    // For API-backed events, upload via API
+    const dbId = (event as unknown as { _id?: string })._id;
+    if (dbId && newMedia.src && newMedia.src.startsWith("blob:")) {
+      // src is a blob URL from a File — upload it
+      try {
+        const res = await fetch(newMedia.src);
+        const blob = await res.blob();
+        const fd = new FormData();
+        fd.append("media", blob, `upload.${blob.type.split("/")[1] || "bin"}`);
+        const result = await api.upload<{ mediaItem: MediaItem }>(`/api/events/${dbId}/media/upload`, fd);
+        setMedia((m) => [...m, result.mediaItem]);
+        toast.success("Media uploaded. Pending moderation.");
+        return;
+      } catch (err) {
+        toast.error("Upload failed");
+        return;
+      }
+    }
+    // Fallback: local state only (mock events)
     const id = `${event.id}-u${Date.now()}`;
     setMedia((m) => [
       ...m,
       {
         ...newMedia,
         id,
-        uploadedBy: "you",
+        uploadedBy: user?.id ?? "you",
         status: "pending",
         flags: 0,
       },
@@ -111,7 +137,18 @@ export const EventCard = ({ event, onOpen, initialActive = false }: { event: Eve
     setItemPickerOpen(true);
   };
 
-  const handleRemove = (id: string) => setMedia((m) => m.filter((x) => x.id !== id));
+  const handleRemove = async (mediaId: string) => {
+    const dbId = (event as unknown as { _id?: string })._id;
+    if (dbId) {
+      try {
+        await api.delete(`/api/events/${dbId}/media/${mediaId}`);
+      } catch {
+        toast.error("Failed to delete media");
+        return;
+      }
+    }
+    setMedia((m) => m.filter((x) => x.id !== mediaId));
+  };
   const handleFlag = (id: string) =>
     setMedia((m) => m.map((x) => (x.id === id ? { ...x, status: "frozen", flags: x.flags + 1 } : x)));
 

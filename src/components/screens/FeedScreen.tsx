@@ -1,10 +1,11 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { EVENTS, Event, MediaItem } from "@/data/events";
 import { EventCard } from "../EventCard";
 import { BookingFlow } from "../BookingFlow";
 import { ModerationReviewInbox } from "../ModerationReviewInbox";
 import { CheckCircle2, Clock, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { api } from "@/lib/api";
 
 const GATE_AFTER = 4; // show auth gate after scrolling past this many cards
 
@@ -15,13 +16,31 @@ export const FeedScreen = () => {
   const [modOpen, setModOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const gatedRef = useRef(false);
+  // API-loaded events (newest first)
+  const [apiEvents, setApiEvents] = useState<Event[]>([]);
+
   // Track all event media in state so moderation actions persist
   const [allMedia, setAllMedia] = useState<Record<string, MediaItem[]>>(
     () => Object.fromEntries(EVENTS.map((e) => [e.id, e.media ?? []]))
   );
 
-  const frozenItems = EVENTS.flatMap((e) =>
-    (allMedia[e.id] ?? [])
+  // Load user-created events from the API on mount
+  useEffect(() => {
+    api.get<{ events: (Event & { _id: string; createdAt: string })[] }>("/api/events?limit=50")
+      .then(({ events }) => {
+        // Filter out any that share an id with mock events
+        const mockIds = new Set(EVENTS.map((e) => e.id));
+        const fresh = events.filter((e) => !mockIds.has(e.id) && !mockIds.has(String(e._id)));
+        setApiEvents(fresh);
+      })
+      .catch(() => {/* silently ignore — offline or no DB */});
+  }, []);
+
+  // Merge: API events (newest) then mock events
+  const allEvents: Event[] = [...apiEvents, ...EVENTS];
+
+  const frozenItems = allEvents.flatMap((e) =>
+    (allMedia[e.id] ?? e.media ?? [])
       .filter((m) => m.status === "frozen")
       .map((m) => ({ ...m, eventId: e.id, eventTitle: e.title, flagCount: m.flags }))
   );
@@ -120,10 +139,10 @@ export const FeedScreen = () => {
         onScroll={handleScroll}
         className="snap-feed no-scrollbar h-[100dvh] overflow-y-scroll pt-[max(3.5rem,calc(1rem+env(safe-area-inset-top)))]"
       >
-        {EVENTS.map((e, i) => (
+        {allEvents.map((e, i) => (
           <EventCard
-            key={e.id}
-            event={{ ...e, media: allMedia[e.id] }}
+            key={e.id ?? (e as unknown as { _id: string })._id}
+            event={{ ...e, media: allMedia[e.id] ?? e.media }}
             onOpen={handleOpenBooking}
             initialActive={i === 0}
           />
