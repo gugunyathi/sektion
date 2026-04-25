@@ -19,7 +19,10 @@ router.get('/', optionalAuth, async (req, res) => {
     { city:  { $regex: new RegExp(q, 'i') } },
   ];
   // Filter to current user's events only
-  if (mine === '1' && req.user) {
+  if (mine === '1') {
+    if (!req.user) {
+      return res.json({ events: [], total: 0, page: Number(page), pages: 0 });
+    }
     filter.createdBy = req.user._id;
   }
 
