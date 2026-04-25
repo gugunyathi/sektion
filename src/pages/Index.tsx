@@ -37,6 +37,11 @@ const Index = () => {
     setTab("feed");
   };
 
+  const handleExitUploadHome = () => {
+    setUploadOpen(false);
+    setTab("feed");
+  };
+
   return (
     <main className="bg-background relative mx-auto min-h-[100dvh] w-full max-w-md overflow-hidden">
       {tab === "feed" && <FeedScreen refreshKey={feedRefreshKey} />}
@@ -50,6 +55,7 @@ const Index = () => {
         open={uploadOpen}
         onOpenChange={setUploadOpen}
         onCreated={handleSektionCreated}
+        onExitHome={handleExitUploadHome}
       />
     </main>
   );

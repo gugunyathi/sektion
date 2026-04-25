@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import {
+  Building2,
   BadgeCheck,
   Bookmark,
   CalendarDays,
@@ -14,6 +15,7 @@ import {
   Trash2,
   Trophy,
   Upload,
+  UserRound,
   Utensils,
   X,
   Zap,
@@ -161,6 +163,145 @@ interface EditForm {
   pricePerSeat: string;
   totalSeats: string;
   hostNote: string;
+}
+
+type CalendarView = "my" | "stalk";
+
+interface CalendarEventItem {
+  source: string;
+  sourceUserId?: string;
+  eventId: string;
+  title: string;
+  venue?: string;
+  city?: string;
+  date?: string;
+  time?: string;
+  category?: string;
+  image?: string | null;
+  status?: string;
+}
+
+interface StalkSummary {
+  stalkingUsers: Array<{ id: string; username?: string; displayName?: string }>;
+  stalkingEstablishments: Array<{ key: string; name?: string; city?: string }>;
+}
+
+function CalendarSection() {
+  const { isAuthed, requireAuth } = useAuth();
+  const [view, setView] = useState<CalendarView>("my");
+  const [events, setEvents] = useState<CalendarEventItem[]>([]);
+  const [summary, setSummary] = useState<StalkSummary>({ stalkingUsers: [], stalkingEstablishments: [] });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthed) {
+      setEvents([]);
+      setSummary({ stalkingUsers: [], stalkingEstablishments: [] });
+      return;
+    }
+
+    setLoading(true);
+    Promise.all([
+      api.get<{ events: CalendarEventItem[] }>(`/api/stalks/calendars/me?view=${view}`),
+      api.get<StalkSummary>("/api/stalks/me"),
+    ])
+      .then(([calendar, stalkSummary]) => {
+        setEvents(Array.isArray(calendar.events) ? calendar.events : []);
+        setSummary(stalkSummary ?? { stalkingUsers: [], stalkingEstablishments: [] });
+      })
+      .catch(() => {
+        setEvents([]);
+      })
+      .finally(() => setLoading(false));
+  }, [isAuthed, view]);
+
+  if (!isAuthed) {
+    return (
+      <section className="mt-6 px-5">
+        <h2 className="font-display mb-3 text-sm font-bold uppercase tracking-wider">Calendar</h2>
+        <button
+          onClick={() => requireAuth("Sign in to view and blend calendars.")}
+          className="w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-left"
+        >
+          <p className="text-sm font-bold">Sign in to unlock stalk calendars</p>
+          <p className="text-xs text-muted-foreground mt-1">Blend your upcoming events with users and establishments you stalk.</p>
+        </button>
+      </section>
+    );
+  }
+
+  return (
+    <section className="mt-6 px-5">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-display text-sm font-bold uppercase tracking-wider">Calendar</h2>
+        <div className="grid grid-cols-2 gap-1 rounded-xl bg-white/5 p-1">
+          <button
+            onClick={() => setView("my")}
+            className={`rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${view === "my" ? "bg-white/15" : "text-muted-foreground"}`}
+          >
+            My Calendar
+          </button>
+          <button
+            onClick={() => setView("stalk")}
+            className={`rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${view === "stalk" ? "bg-white/15" : "text-muted-foreground"}`}
+          >
+            Stalk Calendar
+          </button>
+        </div>
+      </div>
+
+      {view === "stalk" && (
+        <div className="mb-3 grid grid-cols-2 gap-2">
+          <div className="glass rounded-xl p-2.5 flex items-center gap-2">
+            <UserRound className="h-4 w-4 text-accent" />
+            <div>
+              <p className="text-xs font-bold">Users</p>
+              <p className="text-[10px] text-muted-foreground">{summary.stalkingUsers.length} stalked</p>
+            </div>
+          </div>
+          <div className="glass rounded-xl p-2.5 flex items-center gap-2">
+            <Building2 className="h-4 w-4 text-blue-400" />
+            <div>
+              <p className="text-xs font-bold">Establishments</p>
+              <p className="text-[10px] text-muted-foreground">{summary.stalkingEstablishments.length} stalked</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="glass rounded-2xl px-4 py-6 text-center text-sm text-muted-foreground">Loading calendar...</div>
+      ) : events.length === 0 ? (
+        <div className="glass rounded-2xl px-4 py-6 text-center text-sm text-muted-foreground">
+          {view === "my" ? "No upcoming events in your calendar yet." : "No upcoming stalk events yet."}
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          {events.slice(0, 8).map((e, idx) => (
+            <div key={`${e.eventId}-${idx}`} className="glass rounded-2xl p-2.5 flex items-center gap-3">
+              {e.image ? (
+                <img src={e.image} alt={e.title} className="h-14 w-14 rounded-xl object-cover" loading="lazy" width={56} height={56} />
+              ) : (
+                <div className="h-14 w-14 rounded-xl bg-white/10" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold leading-tight truncate">{e.title}</p>
+                <p className="text-[11px] text-muted-foreground truncate">
+                  {[e.venue, e.city].filter(Boolean).join(" · ") || "Unknown venue"}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  {[e.date, e.time].filter(Boolean).join(" · ") || "TBA"}
+                </p>
+              </div>
+              <span className="rounded-full bg-white/10 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                {e.source.replace(/_/g, " ")}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
 }
 
 function MySektionsSection() {
@@ -658,6 +799,9 @@ export const ProfileScreen = ({ onOpenUpload }: { onOpenUpload?: () => void }) =
 
     {/* Draft sektion */}
     <DraftSection onResume={() => onOpenUpload?.()} />
+
+    {/* Calendar */}
+    <CalendarSection />
 
     {/* User uploaded sektions */}
     <MySektionsSection />
