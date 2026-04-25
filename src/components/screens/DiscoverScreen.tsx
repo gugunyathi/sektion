@@ -3,7 +3,7 @@ import { ALL_VIBES, EVENTS, Event, Vibe } from "@/data/events";
 import { VibeTag } from "../VibeTag";
 import { BookingFlow } from "../BookingFlow";
 import { useInventory } from "@/context/InventoryContext";
-import { Bookmark, CalendarDays, Loader2, MapPin, Search, X } from "lucide-react";
+import { Bookmark, CalendarDays, Loader2, MapPin, Search, Users, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useBookmarks } from "@/context/BookmarksContext";
 import { useLocation } from "@/hooks/useLocation";
