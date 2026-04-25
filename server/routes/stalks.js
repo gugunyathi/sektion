@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const mongoose = require('mongoose');
 const { query, body, validationResult } = require('express-validator');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, optionalAuth } = require('../middleware/auth');
 const Stalk = require('../models/Stalk');
 const User = require('../models/User');
 const Event = require('../models/Event');
@@ -77,7 +77,7 @@ async function buildUserCalendarEntries(userId) {
   return [...attending, ...hosted];
 }
 
-router.get('/discover/users', requireAuth,
+router.get('/discover/users', optionalAuth,
   query('q').optional().isString(),
   query('limit').optional().isInt({ min: 1, max: 50 }),
   async (req, res) => {
@@ -88,7 +88,7 @@ router.get('/discover/users', requireAuth,
     const limit = Number(req.query.limit || 20);
 
     const filter = {
-      _id: { $ne: req.user._id },
+      ...(req.user ? { _id: { $ne: req.user._id } } : {}),
       profileComplete: true,
       ...(q
         ? {
@@ -101,14 +101,17 @@ router.get('/discover/users', requireAuth,
         : {}),
     };
 
-    const [users, stalks] = await Promise.all([
-      User.find(filter)
-        .select('_id username displayName photoURL city vibes bio')
-        .sort({ createdAt: -1 })
-        .limit(limit)
-        .lean(),
-      Stalk.find({ stalker: req.user._id, targetType: 'user' }).select('targetUser').lean(),
-    ]);
+    const usersPromise = User.find(filter)
+      .select('_id username displayName photoURL city vibes bio')
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    const stalksPromise = req.user
+      ? Stalk.find({ stalker: req.user._id, targetType: 'user' }).select('targetUser').lean()
+      : Promise.resolve([]);
+
+    const [users, stalks] = await Promise.all([usersPromise, stalksPromise]);
 
     const stalkedIds = new Set(stalks.map((s) => String(s.targetUser)));
 
@@ -127,7 +130,7 @@ router.get('/discover/users', requireAuth,
   }
 );
 
-router.get('/discover/establishments', requireAuth,
+router.get('/discover/establishments', optionalAuth,
   query('q').optional().isString(),
   query('limit').optional().isInt({ min: 1, max: 100 }),
   async (req, res) => {
@@ -152,9 +155,11 @@ router.get('/discover/establishments', requireAuth,
       grouped.set(key, prev);
     }
 
-    const stalks = await Stalk.find({ stalker: req.user._id, targetType: 'establishment' })
-      .select('establishmentKey')
-      .lean();
+    const stalks = req.user
+      ? await Stalk.find({ stalker: req.user._id, targetType: 'establishment' })
+        .select('establishmentKey')
+        .lean()
+      : [];
     const stalkedKeys = new Set(stalks.map((s) => s.establishmentKey));
 
     const establishments = Array.from(grouped.values())

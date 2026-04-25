@@ -32,6 +32,42 @@ interface DiscoverEstablishment {
   stalking: boolean;
 }
 
+const PLACEHOLDER_USERS: DiscoverUser[] = [
+  {
+    id: "ph-zama",
+    username: "zam",
+    displayName: "Zam",
+    city: "Johannesburg",
+    bio: "Party till the morning.",
+    vibes: ["Party Animal", "Night Owl"],
+    stalking: false,
+  },
+  {
+    id: "ph-satoshi",
+    username: "satoshi",
+    displayName: "Satoshi",
+    city: "Johannesburg",
+    bio: "Bottle popper and section hunter.",
+    vibes: ["Luxe", "Socialite"],
+    stalking: false,
+  },
+  {
+    id: "ph-lerato",
+    username: "lerato.n",
+    displayName: "Lerato N",
+    city: "Sandton, Johannesburg",
+    bio: "Weekend tables only.",
+    vibes: ["Foodie", "Luxe"],
+    stalking: false,
+  },
+];
+
+const PLACEHOLDER_ESTABLISHMENTS: DiscoverEstablishment[] = [
+  { key: "ph-kitcheners", name: "Kitcheners", city: "Braamfontein, Johannesburg", upcomingCount: 2, stalking: false },
+  { key: "ph-katzy", name: "Katzy's", city: "Rosebank, Johannesburg", upcomingCount: 3, stalking: false },
+  { key: "ph-konka", name: "Konka", city: "Soweto, Johannesburg", upcomingCount: 1, stalking: false },
+];
+
 export const DiscoverScreen = () => {
   const [mode, setMode] = useState<DiscoverMode>("events");
   const [peopleTab, setPeopleTab] = useState<PeopleTab>("users");
@@ -94,7 +130,7 @@ export const DiscoverScreen = () => {
   }, [query, activeVibes, selectedDate, preferredCity]);
 
   useEffect(() => {
-    if (mode !== "people" || !isAuthed) return;
+    if (mode !== "people") return;
 
     let canceled = false;
     setPeopleLoading(true);
@@ -123,7 +159,51 @@ export const DiscoverScreen = () => {
       canceled = true;
       clearTimeout(timer);
     };
-  }, [mode, peopleTab, query, isAuthed]);
+  }, [mode, peopleTab, query]);
+
+  const displayedUsers = useMemo(() => {
+    const map = new Map<string, DiscoverUser>();
+    [...users, ...PLACEHOLDER_USERS].forEach((u) => {
+      const key = u.id || u.username || u.displayName || Math.random().toString();
+      if (!map.has(key)) map.set(key, u);
+    });
+
+    const q = query.trim().toLowerCase();
+    const base = Array.from(map.values()).filter((u) => {
+      if (!q) return true;
+      const hay = `${u.displayName || ""} ${u.username || ""} ${u.city || ""} ${u.bio || ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+
+    return base.sort((a, b) => {
+      const aJhb = (a.city || "").toLowerCase().includes("johannesburg") ? 0 : 1;
+      const bJhb = (b.city || "").toLowerCase().includes("johannesburg") ? 0 : 1;
+      if (aJhb !== bJhb) return aJhb - bJhb;
+      return (a.displayName || a.username || "").localeCompare(b.displayName || b.username || "");
+    });
+  }, [users, query]);
+
+  const displayedEstablishments = useMemo(() => {
+    const map = new Map<string, DiscoverEstablishment>();
+    [...establishments, ...PLACEHOLDER_ESTABLISHMENTS].forEach((e) => {
+      const key = e.key || e.name;
+      if (!map.has(key)) map.set(key, e);
+    });
+
+    const q = query.trim().toLowerCase();
+    const base = Array.from(map.values()).filter((e) => {
+      if (!q) return true;
+      const hay = `${e.name} ${e.city || ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+
+    return base.sort((a, b) => {
+      const aJhb = (a.city || "").toLowerCase().includes("johannesburg") ? 0 : 1;
+      const bJhb = (b.city || "").toLowerCase().includes("johannesburg") ? 0 : 1;
+      if (aJhb !== bJhb) return aJhb - bJhb;
+      return a.name.localeCompare(b.name);
+    });
+  }, [establishments, query]);
 
   const toggleStalkUser = async (u: DiscoverUser) => {
     if (!isAuthed) {
@@ -322,28 +402,25 @@ export const DiscoverScreen = () => {
       ) : (
         <div className="space-y-3 px-5 pt-4">
           {!isAuthed && (
-            <button
-              onClick={() => requireAuth("Sign in to stalk users and establishments.")}
-              className="w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-left"
-            >
-              <p className="text-sm font-bold">Sign in to use stalk calendars</p>
-              <p className="text-xs text-muted-foreground mt-1">Track users and establishments and blend them into your calendar.</p>
-            </button>
+            <div className="w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-left">
+              <p className="text-sm font-bold">Browse people without signing in</p>
+              <p className="text-xs text-muted-foreground mt-1">Sign in only when you want to stalk calendars.</p>
+            </div>
           )}
 
-          {isAuthed && peopleLoading && (
+          {peopleLoading && (
             <div className="flex items-center justify-center rounded-2xl border border-white/10 py-6 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading
             </div>
           )}
 
-          {isAuthed && peopleError && (
+          {peopleError && (
             <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
               {peopleError}
             </div>
           )}
 
-          {isAuthed && !peopleLoading && peopleTab === "users" && users.map((u) => (
+          {!peopleLoading && peopleTab === "users" && displayedUsers.map((u) => (
             <div key={u.id} className="glass rounded-2xl p-3 flex items-start gap-3">
               {u.photoURL ? (
                 <img src={u.photoURL} alt={u.displayName || u.username || "User"} className="h-10 w-10 rounded-full object-cover" />
@@ -359,15 +436,15 @@ export const DiscoverScreen = () => {
               </div>
               <button
                 onClick={() => toggleStalkUser(u)}
-                disabled={busyKey === `user:${u.id}`}
+                disabled={!isAuthed || busyKey === `user:${u.id}`}
                 className={`rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${u.stalking ? "bg-accent/20 text-accent" : "bg-blue-600/20 text-blue-300"}`}
               >
-                {busyKey === `user:${u.id}` ? "..." : u.stalking ? "Stalking" : "Stalk"}
+                {!isAuthed ? "Sign in" : busyKey === `user:${u.id}` ? "..." : u.stalking ? "Stalking" : "Stalk"}
               </button>
             </div>
           ))}
 
-          {isAuthed && !peopleLoading && peopleTab === "establishments" && establishments.map((e) => (
+          {!peopleLoading && peopleTab === "establishments" && displayedEstablishments.map((e) => (
             <div key={e.key} className="glass rounded-2xl p-3 flex items-center gap-3">
               <span className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center">
                 <Building2 className="h-5 w-5 text-muted-foreground" />
@@ -380,18 +457,18 @@ export const DiscoverScreen = () => {
               </div>
               <button
                 onClick={() => toggleStalkEstablishment(e)}
-                disabled={busyKey === `est:${e.key}`}
+                disabled={!isAuthed || busyKey === `est:${e.key}`}
                 className={`rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${e.stalking ? "bg-accent/20 text-accent" : "bg-blue-600/20 text-blue-300"}`}
               >
-                {busyKey === `est:${e.key}` ? "..." : e.stalking ? "Stalking" : "Stalk"}
+                {!isAuthed ? "Sign in" : busyKey === `est:${e.key}` ? "..." : e.stalking ? "Stalking" : "Stalk"}
               </button>
             </div>
           ))}
 
-          {isAuthed && !peopleLoading && peopleTab === "users" && users.length === 0 && (
+          {!peopleLoading && peopleTab === "users" && displayedUsers.length === 0 && (
             <p className="text-muted-foreground text-center text-sm py-8">No users found.</p>
           )}
-          {isAuthed && !peopleLoading && peopleTab === "establishments" && establishments.length === 0 && (
+          {!peopleLoading && peopleTab === "establishments" && displayedEstablishments.length === 0 && (
             <p className="text-muted-foreground text-center text-sm py-8">No establishments found.</p>
           )}
         </div>
