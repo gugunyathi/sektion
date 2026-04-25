@@ -37,9 +37,13 @@ const CATEGORIES: Category[] = ["Club", "Dining", "Lounge", "Rave", "Themed"];
 const ALL_VIBES: Vibe[] = ["Party Animal", "Foodie", "Chill", "Luxe", "Themed"];
 
 interface MediaPreview {
+  id: string;
   file: File;
   previewUrl: string;
   kind: "image" | "video";
+  uploadStatus: "pending" | "uploading" | "uploaded" | "failed";
+  uploadedUrl?: string;
+  error?: string;
 }
 
 interface FormState {
@@ -75,14 +79,17 @@ export const UploadSektionSheet = ({
   open,
   onOpenChange,
   onCreated,
+  onExitHome,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onCreated: (event: Record<string, unknown>) => void;
+  onExitHome: () => void;
 }) => {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [mediaPreviews, setMediaPreviews] = useState<MediaPreview[]>([]);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -122,6 +129,15 @@ export const UploadSektionSheet = ({
     setForm((p) => ({ ...p, [key]: value }));
   };
 
+  const saveDraft = () => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
+      toast.success("Saved to drafts");
+    } catch {
+      toast.error("Failed to save draft");
+    }
+  };
+
   const clearForm = () => {
     setForm(EMPTY_FORM);
     setMediaPreviews([]);
@@ -156,7 +172,16 @@ export const UploadSektionSheet = ({
       }
       const kind = file.type.startsWith("video/") ? "video" : "image";
       const previewUrl = URL.createObjectURL(file);
-      setMediaPreviews((p) => [...p, { file, previewUrl, kind }]);
+      setMediaPreviews((p) => [
+        ...p,
+        {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          file,
+          previewUrl,
+          kind,
+          uploadStatus: "pending",
+        },
+      ]);
     });
   };
 
@@ -178,29 +203,85 @@ export const UploadSektionSheet = ({
       );
     if (step === 1)
       return form.vibes.length > 0 && form.pricePerSeat && form.totalSeats;
-    if (step === 2) return mediaPreviews.length > 0;
+    if (step === 2) return mediaPreviews.length > 0 && !uploadingMedia && !submitting;
     return true;
+  };
+
+  const uploadPendingMedia = async () => {
+    const pendingIndexes = mediaPreviews
+      .map((mp, idx) => ({ mp, idx }))
+      .filter(({ mp }) => mp.uploadStatus !== "uploaded");
+
+    if (pendingIndexes.length === 0) {
+      return { ok: true, media: mediaPreviews };
+    }
+
+    setUploadingMedia(true);
+    const nextMedia = mediaPreviews.map((mp) => ({ ...mp }));
+    let allUploaded = true;
+
+    try {
+      for (const { idx } of pendingIndexes) {
+        const current = nextMedia[idx];
+        current.uploadStatus = "uploading";
+        current.error = undefined;
+        setMediaPreviews([...nextMedia]);
+
+        try {
+          const fd = new FormData();
+          fd.append("file", current.file);
+          const data = await api.upload<{ url?: string }>("/api/uploads/sektion-media", fd);
+          if (!data.url) throw new Error("No URL returned from upload");
+
+          current.uploadStatus = "uploaded";
+          current.uploadedUrl = data.url;
+          current.error = undefined;
+          setMediaPreviews([...nextMedia]);
+        } catch (err) {
+          allUploaded = false;
+          current.uploadStatus = "failed";
+          current.uploadedUrl = undefined;
+          current.error = err instanceof Error ? err.message : "Upload failed";
+          setMediaPreviews([...nextMedia]);
+        }
+      }
+
+      return { ok: allUploaded, media: nextMedia };
+    } finally {
+      setUploadingMedia(false);
+    }
+  };
+
+  const handleNext = async () => {
+    if (step !== 2) {
+      setStep((s) => s + 1);
+      return;
+    }
+
+    const { ok } = await uploadPendingMedia();
+    if (!ok) {
+      toast.error("Some media failed to upload. Retry from this step.");
+      return;
+    }
+
+    toast.success("Media uploaded. Review your sektion before publishing.");
+    setStep((s) => s + 1);
   };
 
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      // Step 1: upload each media file to Cloudinary and collect URLs
-      const mediaUrls: string[] = [];
-      for (const mp of mediaPreviews) {
-        const fd = new FormData();
-        fd.append("file", mp.file);
-        fd.append("upload_preset", "sektion");
-        
-        const res = await fetch("https://api.cloudinary.com/v1_1/dkfoqidrv/auto/upload", {
-          method: "POST",
-          body: fd,
-        });
-        
-        if (!res.ok) throw new Error(`Cloudinary upload failed: ${res.statusText}`);
-        const data = await res.json() as { secure_url?: string };
-        if (!data.secure_url) throw new Error("No URL returned from Cloudinary");
-        mediaUrls.push(data.secure_url);
+      const uploadResult = await uploadPendingMedia();
+      if (!uploadResult.ok) {
+        throw new Error("Some media is still not uploaded");
+      }
+
+      const mediaUrls = uploadResult.media
+        .map((mp) => mp.uploadedUrl)
+        .filter((url): url is string => Boolean(url));
+
+      if (mediaUrls.length === 0) {
+        throw new Error("Add and upload at least one photo or video");
       }
 
       // Step 2: create the event with media URLs
@@ -239,6 +320,25 @@ export const UploadSektionSheet = ({
     onOpenChange(false);
   };
 
+  const handleExitHome = () => {
+    if (submitting) return;
+    saveDraft();
+    handleClose();
+    onExitHome();
+  };
+
+  const hasFailedMedia = mediaPreviews.some((mp) => mp.uploadStatus === "failed");
+  const hasPendingMedia = mediaPreviews.some((mp) => mp.uploadStatus === "pending");
+  const nextLabel = step === 2
+    ? uploadingMedia
+      ? "Uploading media..."
+      : hasFailedMedia
+        ? "Retry uploads"
+        : hasPendingMedia
+          ? "Upload media"
+          : "Next"
+    : "Next";
+
   return (
     <Sheet open={open} onOpenChange={handleClose}>
       <SheetContent
@@ -248,16 +348,26 @@ export const UploadSektionSheet = ({
       >
         <SheetHeader className="border-b border-white/10 px-5 py-4">
           <div className="flex items-center justify-between gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleExitHome}
+              disabled={submitting}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              Exit to Home
+            </Button>
             <SheetTitle className="text-gradient-vibe font-display text-lg font-black">
               Upload Sektion
             </SheetTitle>
             <Button
               variant="ghost"
               size="sm"
-              onClick={clearForm}
+              onClick={saveDraft}
+              disabled={submitting}
               className="text-xs text-muted-foreground hover:text-foreground"
             >
-              Clear
+              Save to Drafts
             </Button>
           </div>
           {/* Step indicator */}
@@ -407,7 +517,7 @@ export const UploadSektionSheet = ({
             {step === 2 && (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Add at least one photo or video for your sektion (max 8).
+                  Add at least one photo or video for your sektion (max 8). Media must finish uploading here before review.
                 </p>
                 <input
                   ref={fileInputRef}
@@ -455,6 +565,17 @@ export const UploadSektionSheet = ({
                             Video
                           </span>
                         )}
+                        <span
+                          className={cn(
+                            "absolute left-1 top-1 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase",
+                            mp.uploadStatus === "uploaded" && "bg-emerald-500/90 text-white",
+                            mp.uploadStatus === "uploading" && "bg-blue-500/90 text-white",
+                            mp.uploadStatus === "failed" && "bg-red-500/90 text-white",
+                            mp.uploadStatus === "pending" && "bg-black/70 text-white",
+                          )}
+                        >
+                          {mp.uploadStatus}
+                        </span>
                       </div>
                     ))}
                     {mediaPreviews.length < 8 && (
@@ -466,6 +587,14 @@ export const UploadSektionSheet = ({
                         <ImagePlus className="h-5 w-5" />
                       </button>
                     )}
+                  </div>
+                )}
+                {mediaPreviews.length > 0 && (
+                  <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-muted-foreground">
+                    {uploadingMedia && "Uploading media to Cloudinary..."}
+                    {!uploadingMedia && hasFailedMedia && "One or more files failed. Retry uploads before continuing."}
+                    {!uploadingMedia && !hasFailedMedia && hasPendingMedia && "Press Upload media to finish uploading before review."}
+                    {!uploadingMedia && !hasFailedMedia && !hasPendingMedia && "All media uploaded. You can continue to review."}
                   </div>
                 )}
               </div>
@@ -532,14 +661,30 @@ export const UploadSektionSheet = ({
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
               )}
+              <Button
+                variant="outline"
+                onClick={saveDraft}
+                disabled={submitting}
+                className="border-white/15 text-muted-foreground hover:bg-white/5 hover:text-foreground"
+              >
+                Save to Drafts
+              </Button>
               <div className="flex-1" />
               {step < STEP_LABELS.length - 1 ? (
                 <Button
-                  onClick={() => setStep((s) => s + 1)}
+                  onClick={handleNext}
                   disabled={!canNext()}
                   className="bg-blue-600 hover:bg-blue-500 text-white gap-2"
                 >
-                  Next <ArrowRight className="h-4 w-4" />
+                  {step === 2 && uploadingMedia ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> {nextLabel}
+                    </>
+                  ) : (
+                    <>
+                      {nextLabel} <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
                 </Button>
               ) : (
                 <Button

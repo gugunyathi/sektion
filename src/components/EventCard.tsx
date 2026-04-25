@@ -82,38 +82,20 @@ export const EventCard = ({ event, onOpen, initialActive = false, muted: mutedPr
   const handleMediaUpload = async (
     newMedia: Omit<MediaItem, "id" | "uploadedBy" | "status" | "flags">
   ) => {
-    // For API-backed events, upload via Cloudinary
+    // For API-backed events, upload directly to the backend multipart route
     const dbId = (event as unknown as { _id?: string })._id;
     if (dbId && newMedia.src && newMedia.src.startsWith("blob:")) {
-      // src is a blob URL from a File — upload it to Cloudinary
       try {
         const res = await fetch(newMedia.src);
         const blob = await res.blob();
         const fd = new FormData();
-        fd.append("file", blob);
-        fd.append("upload_preset", "sektion");
-        
-        const uploadRes = await fetch("https://api.cloudinary.com/v1_1/dkfoqidrv/auto/upload", {
-          method: "POST",
-          body: fd,
-        });
-        
-        if (!uploadRes.ok) throw new Error("Cloudinary upload failed");
-        const uploadData = await uploadRes.json() as { secure_url?: string };
-        if (!uploadData.secure_url) throw new Error("No URL from Cloudinary");
-        
-        // Now add media to event via API with Cloudinary URL
-        const result = await api.post<{ mediaItem: MediaItem }>(`/api/events/${dbId}/media`, {
-          id: `m-${Date.now()}`,
-          kind: newMedia.kind,
-          src: uploadData.secure_url,
-          uploadedBy: user?.id ?? "you",
-        });
+        fd.append("media", new File([blob], `${newMedia.kind}-${Date.now()}`, { type: blob.type || (newMedia.kind === "video" ? "video/mp4" : "image/jpeg") }));
+        const result = await api.upload<{ mediaItem: MediaItem }>(`/api/events/${dbId}/media/upload`, fd);
         setMedia((m) => [...m, result.mediaItem]);
         toast.success("Media uploaded. Pending moderation.");
         return;
       } catch (err) {
-        toast.error("Upload failed");
+        toast.error(err instanceof Error ? err.message : "Upload failed");
         return;
       }
     }

@@ -53,6 +53,17 @@ router.post('/media', requireAuth, uploadMedia.single('file'), async (req, res) 
   });
 });
 
+// ── POST /api/uploads/sektion-media ──────────────────────
+router.post('/sektion-media', requireAuth, uploadMedia.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+  const kind = req.file.mimetype.startsWith('video/') ? 'video' : 'image';
+  const relPath = `media/${req.file.filename}`;
+  const url = toPublicUrl(req, relPath);
+
+  res.status(201).json({ url, kind });
+});
+
 // ── POST /api/uploads/item ───────────────────────────────
 router.post('/item', requireAuth, uploadItem.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });

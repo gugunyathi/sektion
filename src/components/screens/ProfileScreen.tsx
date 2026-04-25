@@ -129,8 +129,6 @@ function DraftSection({ onResume }: { onResume: () => void }) {
 }
 
 /* ── My Sektions Section ─────────────────────────────── */
-const CLOUDINARY_CLOUD = "dkfoqidrv";
-const CLOUDINARY_PRESET = "sektion";
 const CATEGORIES = ["Club", "Dining", "Lounge", "Rave", "Themed"] as const;
 const VIBE_OPTIONS = ["Party Animal", "Luxe", "Foodie", "Chill", "Rave", "Social", "Romantic", "LGBTQ+", "Networking"];
 
@@ -214,18 +212,21 @@ function MySektionsSection() {
     }));
 
   const handleAddMedia = async (file: File) => {
+    if (!editTarget?._id) return;
     setUploadingMedia(true);
     try {
       const fd = new FormData();
-      fd.append("file", file);
-      fd.append("upload_preset", CLOUDINARY_PRESET);
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/auto/upload`, { method: "POST", body: fd });
-      const json = await res.json();
-      if (!json.secure_url) throw new Error("Upload failed");
-      const newItem: ApiMedia = { src: json.secure_url, kind: file.type.startsWith("video") ? "video" : "image", id: `m-${Date.now()}` };
+      fd.append("media", file);
+      const result = await api.upload<{ mediaItem?: ApiMedia }>(`/api/events/${editTarget._id}/media/upload`, fd);
+      if (!result.mediaItem?.src) throw new Error("Upload failed");
+      const newItem: ApiMedia = {
+        src: result.mediaItem.src,
+        kind: result.mediaItem.kind,
+        id: result.mediaItem.id ?? `m-${Date.now()}`,
+      };
       setEditMedia((m) => [...m, newItem]);
-    } catch {
-      toast.error("Media upload failed");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Media upload failed");
     } finally {
       setUploadingMedia(false);
     }

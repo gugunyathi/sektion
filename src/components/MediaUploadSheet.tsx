@@ -51,13 +51,12 @@ export const MediaUploadSheet = ({ open, onOpenChange, onSave }: Props) => {
 
     setFile(selectedFile);
 
-    // Create preview
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setPreview(event.target?.result as string);
-      setStep("preview");
-    };
-    reader.readAsDataURL(selectedFile);
+    if (preview?.startsWith("blob:")) {
+      URL.revokeObjectURL(preview);
+    }
+
+    setPreview(URL.createObjectURL(selectedFile));
+    setStep("preview");
   };
 
   const handleSave = async () => {
@@ -99,6 +98,9 @@ export const MediaUploadSheet = ({ open, onOpenChange, onSave }: Props) => {
   };
 
   const handleReset = () => {
+    if (preview?.startsWith("blob:")) {
+      URL.revokeObjectURL(preview);
+    }
     setStep("type");
     setMediaType(null);
     setFile(null);
