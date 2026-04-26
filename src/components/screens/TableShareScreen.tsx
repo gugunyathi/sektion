@@ -1,7 +1,7 @@
 ﻿import { EVENTS } from "@/data/events";
 import { VibeTag } from "../VibeTag";
 import { CalendarDays, Loader2, MapPin, Shuffle, Sparkles, X, Zap, Building2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BookingFlow } from "../BookingFlow";
 import { useInventory } from "@/context/InventoryContext";
 import { VenueManagerPanel } from "../VenueManagerPanel";
@@ -9,6 +9,15 @@ import { getTablesForEvent } from "@/data/tables";
 import { useSeatAvailability } from "@/context/SeatAvailabilityContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLocation } from "@/hooks/useLocation";
+import { api } from "@/lib/api";
+
+type PersonalizedEntry = {
+  eventId: string;
+  score: number;
+  rationale?: string;
+  stalkPriority?: boolean;
+  event: (typeof EVENTS)[number];
+};
 
 /** Compute a 0-100 match score for an event given user vibes + city preference */
 function matchScore(eventVibes: string[], eventCity: string, userVibes: string[], preferredCity: string | null): number {
@@ -19,7 +28,7 @@ function matchScore(eventVibes: string[], eventCity: string, userVibes: string[]
 }
 
 export const TableShareScreen = () => {
-  const { user } = useAuth();
+  const { user, isAuthed, requireAuth } = useAuth();
   const loc = useLocation();
 
   // Effective city: profile city → detected city → null
@@ -28,11 +37,21 @@ export const TableShareScreen = () => {
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [open, setOpen] = useState(false);
   const [venueOpen, setVenueOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [autoBooked, setAutoBooked] = useState<{ title: string; date: string; city: string; tableLabel: string } | null>(null);
+  const [personalized, setPersonalized] = useState<PersonalizedEntry[]>([]);
   const { seatsLeftForEvent } = useInventory();
   const { releaseSeat } = useSeatAvailability();
 
   // Smart-match: score all events, filter by date if set, sort by score
   const smartMatched = useMemo(() => {
+    if (personalized.length > 0) {
+      return personalized
+        .filter((entry) => !selectedDate || entry.event.dateISO === selectedDate)
+        .map((entry) => ({ event: entry.event, score: entry.score, rationale: entry.rationale, stalkPriority: entry.stalkPriority }));
+    }
+
     return EVENTS
       .filter((e) => !selectedDate || e.dateISO === selectedDate)
       .map((e) => ({
@@ -40,7 +59,39 @@ export const TableShareScreen = () => {
         score: matchScore(e.vibes, e.city, user?.vibes ?? [], preferredCity),
       }))
       .sort((a, b) => b.score - a.score);
-  }, [selectedDate, user?.vibes, preferredCity]);
+  }, [selectedDate, user?.vibes, preferredCity, personalized]);
+
+  useEffect(() => {
+    if (!isAuthed) {
+      setPersonalized([]);
+      setAutoBooked(null);
+      setAiError(null);
+      return;
+    }
+
+    let canceled = false;
+    setAiLoading(true);
+    setAiError(null);
+
+    const q = selectedDate ? `?date=${encodeURIComponent(selectedDate)}&autoBook=1` : "?autoBook=1";
+    api.get<{ recommendations: PersonalizedEntry[]; autoBooked?: { title: string; date: string; city: string; tableLabel: string } | null }>(`/api/tableshare/personalized${q}`)
+      .then((data) => {
+        if (canceled) return;
+        setPersonalized(Array.isArray(data.recommendations) ? data.recommendations : []);
+        setAutoBooked(data.autoBooked ?? null);
+      })
+      .catch((err) => {
+        if (canceled) return;
+        setAiError(err instanceof Error ? err.message : "Could not load AI recommendations");
+      })
+      .finally(() => {
+        if (!canceled) setAiLoading(false);
+      });
+
+    return () => {
+      canceled = true;
+    };
+  }, [isAuthed, selectedDate]);
 
   const [idx, setIdx] = useState(0);
   const entry = smartMatched[idx % Math.max(smartMatched.length, 1)];
@@ -83,6 +134,25 @@ export const TableShareScreen = () => {
         <p className="text-muted-foreground mt-1 text-sm">
           AI-curated based on your vibes. Hit shuffle for chaos.
         </p>
+        {!isAuthed && (
+          <button
+            onClick={() => requireAuth("Sign in to unlock Gemini-powered tableshare and automatic stalk-priority booking.")}
+            className="mt-3 rounded-xl border border-white/20 bg-white/5 px-3 py-2 text-xs font-semibold"
+          >
+            Sign in to enable AI auto-curation + auto-booking
+          </button>
+        )}
+        {aiLoading && (
+          <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
+            <Loader2 className="h-3 w-3 animate-spin" /> Refreshing personalized feed...
+          </p>
+        )}
+        {aiError && <p className="text-xs text-red-300 mt-2">{aiError}</p>}
+        {autoBooked && (
+          <div className="mt-2 rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-xs">
+            Auto-booked by AI: {autoBooked.title} · {autoBooked.city} · {autoBooked.date} · {autoBooked.tableLabel}
+          </div>
+        )}
       </div>
 
       {/* Filters row */}
@@ -150,6 +220,11 @@ export const TableShareScreen = () => {
               <span className={`flex items-center gap-1 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${score >= 70 ? "bg-gradient-gold text-primary-foreground" : "glass"}`}>
                 <Sparkles className="h-3 w-3" /> {score}% match
               </span>
+              {(entry as { stalkPriority?: boolean } | undefined)?.stalkPriority && (
+                <span className="glass flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-accent">
+                  <Zap className="h-3 w-3" /> Stalk Priority
+                </span>
+              )}
               {event.trending && (
                 <span className="glass flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-secondary">
                   <Zap className="h-3 w-3" /> Hot
@@ -160,6 +235,9 @@ export const TableShareScreen = () => {
               <div className="mb-2 flex flex-wrap gap-1.5">
                 {event.vibes.map((v) => <VibeTag key={v} vibe={v} />)}
               </div>
+              {(entry as { rationale?: string } | undefined)?.rationale && (
+                <p className="mb-2 text-[11px] text-accent/90">{(entry as { rationale?: string }).rationale}</p>
+              )}
               <h2 className="font-display text-2xl font-black leading-tight">{event.title}</h2>
               <p className="text-foreground/80 text-sm">{event.venue} · {event.city}</p>
               <p className="text-foreground/60 mt-1 text-xs">{event.date} · {event.time}</p>

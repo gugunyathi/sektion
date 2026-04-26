@@ -22,6 +22,7 @@ const eventRoutes = require('./routes/events');
 const uploadRoutes = require('./routes/uploads');
 const adminRoutes = require('./routes/admin');
 const stalkRoutes = require('./routes/stalks');
+const tableShareRoutes = require('./routes/tableshare');
 
 const app = express();
 
@@ -96,6 +97,7 @@ app.use('/api/events',    eventRoutes);
 app.use('/api/uploads',   uploadRoutes);
 app.use('/api/admin',     adminRoutes);
 app.use('/api/stalks',    stalkRoutes);
+app.use('/api/tableshare', tableShareRoutes);
 
 // ── Health check ───────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString(), env: process.env.NODE_ENV }));

@@ -79,6 +79,20 @@ export const EventCard = ({ event, onOpen, initialActive = false, muted: mutedPr
     setUploadOpen(true);
   };
 
+  const trackInteraction = (action: "like" | "comment" | "share") => {
+    if (!user?.id) return;
+    const dbId = (event as unknown as { _id?: string })._id;
+    const payload = {
+      action,
+      eventId: String(dbId || event.id),
+      title: event.title,
+      venue: event.venue,
+      city: event.city,
+      eventDate: event.date,
+    };
+    api.post("/api/tableshare/interactions", payload).catch(() => {});
+  };
+
   const handleMediaUpload = async (
     newMedia: Omit<MediaItem, "id" | "uploadedBy" | "status" | "flags">
   ) => {
@@ -270,7 +284,13 @@ export const EventCard = ({ event, onOpen, initialActive = false, muted: mutedPr
         {/* Social engagement icons — center aligned */}
         <div className="flex flex-col items-center gap-5">
           <button
-            onClick={() => setLiked((v) => !v)}
+            onClick={() => {
+              setLiked((v) => {
+                const next = !v;
+                if (next) trackInteraction("like");
+                return next;
+              });
+            }}
             className="flex flex-col items-center gap-1"
             aria-label="Like"
           >
@@ -286,13 +306,21 @@ export const EventCard = ({ event, onOpen, initialActive = false, muted: mutedPr
               {(liked ? 1 : 0) + 234}
             </span>
           </button>
-          <button className="flex flex-col items-center gap-1" aria-label="Comments">
+          <button
+            className="flex flex-col items-center gap-1"
+            aria-label="Comments"
+            onClick={() => trackInteraction("comment")}
+          >
             <span className="glass flex h-12 w-12 items-center justify-center rounded-full">
               <MessageCircle className="h-6 w-6 text-foreground" />
             </span>
             <span className="text-[11px] font-semibold text-foreground/90 drop-shadow">42</span>
           </button>
-          <button className="flex flex-col items-center gap-1" aria-label="Share">
+          <button
+            className="flex flex-col items-center gap-1"
+            aria-label="Share"
+            onClick={() => trackInteraction("share")}
+          >
             <span className="glass flex h-12 w-12 items-center justify-center rounded-full">
               <Send className="h-6 w-6 text-foreground" />
             </span>
