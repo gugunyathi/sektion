@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import {
   Building2,
   BadgeCheck,
@@ -795,6 +796,19 @@ export const ProfileScreen = ({ onOpenUpload }: { onOpenUpload?: () => void }) =
           </span>
         )}
       </button>
+
+      <Link
+        to="/about"
+        className="mx-5 mt-3 w-[calc(100%-2.5rem)] glass rounded-2xl flex items-center px-4 py-3.5 gap-3 hover:bg-white/10 transition-colors"
+      >
+        <span className="bg-gradient-vibe flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
+          <Building2 className="h-4 w-4 text-primary-foreground" />
+        </span>
+        <div className="flex-1 text-left">
+          <p className="text-sm font-bold leading-tight">About Sektion</p>
+          <p className="text-[11px] text-muted-foreground">Luxury real estate and premium experiences</p>
+        </div>
+      </Link>
     </div>
 
     {/* Draft sektion */}
